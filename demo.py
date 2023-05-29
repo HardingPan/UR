@@ -38,8 +38,7 @@ def viz(img, flo):
 
     # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
     # cv2.waitKey()
-    
-    plt.savefig('results/res1.png')
+    cv2.imwrite('res1.png', img_flo)
 
 
 def demo(args):
