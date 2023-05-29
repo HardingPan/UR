@@ -22,50 +22,50 @@ except:
 
 
 class RAFT(nn.Module):
-    # def __init__(self, args):
-    #     super(RAFT, self).__init__()
-    #     self.args = args
-
-    #     if args.small:
-    #         self.hidden_dim = hdim = 96
-    #         self.context_dim = cdim = 64
-    #         args.corr_levels = 4
-    #         args.corr_radius = 3
-        
-    #     else:
-    #         self.hidden_dim = hdim = 128
-    #         self.context_dim = cdim = 128
-    #         args.corr_levels = 4
-    #         args.corr_radius = 4
-
-    #     if 'dropout' not in self.args:
-    #         self.args.dropout = 0
-
-    #     if 'alternate_corr' not in self.args:
-    #         self.args.alternate_corr = False
-
-    #     # feature network, context network, and update block
-    #     if args.small:
-    #         self.fnet = SmallEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)        
-    #         self.cnet = SmallEncoder(output_dim=hdim+cdim, norm_fn='none', dropout=args.dropout)
-    #         self.update_block = SmallUpdateBlock(self.args, hidden_dim=hdim)
-
-    #     else:
-    #         self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=args.dropout)        
-    #         self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=args.dropout)
-    #         self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
-            
-    def __init__(self):
+    def __init__(self, args):
         super(RAFT, self).__init__()
+        self.args = args
+
+        if args.small:
+            self.hidden_dim = hdim = 96
+            self.context_dim = cdim = 64
+            args.corr_levels = 4
+            args.corr_radius = 3
         
-        self.hidden_dim = hdim = 128
-        self.context_dim = cdim = 128
-        self.corr_levels = 4
-        self.corr_radius = 4
+        else:
+            self.hidden_dim = hdim = 128
+            self.context_dim = cdim = 128
+            args.corr_levels = 4
+            args.corr_radius = 4
+
+        if 'dropout' not in self.args:
+            self.args.dropout = 0
+
+        if 'alternate_corr' not in self.args:
+            self.args.alternate_corr = False
+
+        # feature network, context network, and update block
+        if args.small:
+            self.fnet = SmallEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)        
+            self.cnet = SmallEncoder(output_dim=hdim+cdim, norm_fn='none', dropout=args.dropout)
+            self.update_block = SmallUpdateBlock(self.args, hidden_dim=hdim)
+
+        else:
+            self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=args.dropout)        
+            self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=args.dropout)
+            self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
+            
+    # def __init__(self):
+    #     super(RAFT, self).__init__()
         
-        self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=self.dropout)        
-        self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=self.dropout)
-        self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
+    #     self.hidden_dim = hdim = 128
+    #     self.context_dim = cdim = 128
+    #     self.corr_levels = 4
+    #     self.corr_radius = 4
+        
+    #     self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=self.dropout)        
+    #     self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=self.dropout)
+    #     self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
         
         
 

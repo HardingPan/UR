@@ -8,8 +8,9 @@ import glob
 import numpy as np
 import torch
 from PIL import Image
+import matplotlib.pyplot as plt
 
-from raft import RAFT
+from raft.raft import RAFT
 from raft.utils import flow_viz
 from raft.utils.utils import InputPadder
 
@@ -35,8 +36,10 @@ def viz(img, flo):
     # plt.imshow(img_flo / 255.0)
     # plt.show()
 
-    cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
-    cv2.waitKey()
+    # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
+    # cv2.waitKey()
+    
+    plt.savefig('results/res1.png')
 
 
 def demo(args):
