@@ -19,7 +19,7 @@ ground truth： $v_t$
 ### 预处理部分
 ![ur](ur.png)
 ### Uncertainty部分
-取一个期望为$\mu$、方差为${\sigma}^2$的正态分布 $X \sim N(\mu, \sigma)$：  
+取一个期望为 $\mu$ 、方差为 ${\sigma}^2$ 的正态分布 $X \sim N(\mu, \sigma)$ ：  
 
 $$
 f(x)=\frac{1}{\sigma \sqrt{2 \pi}} e^{-\frac{(x-\mu)^2}{2 \sigma^2}}

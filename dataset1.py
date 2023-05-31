@@ -30,31 +30,19 @@ transform_gray = transforms.Compose([
 
 # rgb图片读取
 def load_image(imfile):
-    img = np.array(Image.open(imfile)).astype(np.uint8)
-    # img = np.array(Image.open(imfile))
+    # img = np.array(Image.open(imfile)).astype(np.uint8)
+    img = np.array(Image.open(imfile))
     img = torch.from_numpy(img).permute(2, 0, 1).float()
     return img[None].to(DEVICE)
 
-# 图像可视化
+# 光流可视化
 def viz(flo):
     flo = flo[0].permute(1,2,0).cpu().numpy()
     
-    # map flow to rgb image
     flo = flow_viz.flow_to_image(flo)
-    # img_flo = np.concatenate([img, flo], axis=0)
 
-    # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
-    # cv2.waitKey()
     cv2.imwrite('res1.png', flo[:, :, [2,1,0]])
 
-# def dataload(imfiles1, imfiles2):
-#     image1 = load_image(imfiles1)
-#     image2 = load_image(imfiles2)
-    
-#     padder = InputPadder(image1.shape)
-#     image1, image2 = padder.pad(image1, image2)
-    
-#     flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
 
 def dataload(args):
     model = torch.nn.DataParallel(RAFT(args))
@@ -72,17 +60,17 @@ def dataload(args):
         
         images = sorted(images)
         for imfile1, imfile2 in zip(images[:-1], images[1:]):
+            # 用这种方法得到的张量torch.Size([1, 3, 436, 1024])
+            image1 = load_image(imfile1)
+            image2 = load_image(imfile2)
             
-            # torch.Size([3, 436, 1024])
-            image1_rgb_tensor = load_image(imfile1)
-            image2_rgb_tensor = load_image(imfile2)
-            
-            """
-            torch.Size([1, 3, 440, 1024])
-            这个pad操作会改变张量的尺寸, 后面灰度张量也需要pad一下才可以和光流张量拼接
-            """
-            padder = InputPadder(image1_rgb_tensor.shape)
-            image1, image2 = padder.pad(image1_rgb_tensor, image2_rgb_tensor)
+            # 用这种方法得到的张量也是torch.Size([1, 3, 436, 1024])
+            # image1 = transform_rgb(Image.open(imfile1)).to(DEVICE)
+            # image2 = transform_rgb(Image.open(imfile2)).to(DEVICE)
+
+            padder = InputPadder(image1.shape)
+            # 这就变成440了，torch.Size([1, 3, 440, 1024])
+            image1, image2 = padder.pad(image1, image2)
             
             # torch.Size([1, 2, 440, 1024])
             flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
@@ -90,18 +78,14 @@ def dataload(args):
             # torch.Size([2, 440, 1024])
             flow_up = torch.squeeze(flow_up)
             
-            # torch.Size([2, 436, 1024])
+            # torch.Size([1, 436, 1024])
             image1_gray_tensor = transform_gray(Image.open(imfile1)).to(DEVICE)
             image2_gray_tensor = transform_gray(Image.open(imfile2)).to(DEVICE)
-            # torch.Size([2, 440, 1024])
             image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
-            
-            """
-            torch.Size([4, 440, 1024])
-            四通道分别为 灰度后的i1, 灰度后的i2, u, v
-            """
+            print(image1_gray_tensor.shape)
+            # 没法cat, 前面两个w为436, flow_up是440
             result = torch.cat((image1_gray_tensor, image2_gray_tensor, flow_up), 0)
-            
+            print(result.shape)
             data.append(result)
             
             return data
