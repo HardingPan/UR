@@ -63,16 +63,20 @@ def dataload(args):
     model = model.module
     model.to(DEVICE)
     model.eval()
-
-    data = []
+    
+    data_path = 'data'
     
     with torch.no_grad():
         images = glob.glob(os.path.join(args.path, '*.png')) + \
                  glob.glob(os.path.join(args.path, '*.jpg'))
         
         images = sorted(images)
+        images_num = len(images)
+        images_loading_num = 1
+        print('\n', '--------------images loading...-------------', '\n')
         for imfile1, imfile2 in zip(images[:-1], images[1:]):
             
+            images_loading_num = images_loading_num + 1
             # torch.Size([3, 436, 1024])
             image1_rgb_tensor = load_image(imfile1)
             image2_rgb_tensor = load_image(imfile2)
@@ -101,11 +105,14 @@ def dataload(args):
             四通道分别为 灰度后的i1, 灰度后的i2, u, v
             """
             result = torch.cat((image1_gray_tensor, image2_gray_tensor, flow_up), 0)
+            result = result.cpu()
+            result_np = result.numpy()
+            data_path = data_path + '/' + imfile1[-5:-9:-1][-1::-1]
             
-            data.append(result)
-            
-            return data
-
+            np.save(data_path, result_np)
+            data_path = 'data'
+            if images_loading_num % 5 == 0:
+                print('\n', '--------------images loaded: ', images_loading_num, ' / ', images_num, '-------------', '\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -117,4 +124,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     res = dataload(args)
-    print(res)
