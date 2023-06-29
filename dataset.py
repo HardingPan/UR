@@ -11,12 +11,11 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 from raft.raft import RAFT
 from raft.utils import flow_viz
 from raft.utils.utils import InputPadder
-
-
 
 DEVICE = 'cuda'
 
