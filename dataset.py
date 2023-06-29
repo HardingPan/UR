@@ -10,6 +10,7 @@ import torch
 from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms
+import torch.nn.functional as F
 
 from raft.raft import RAFT
 from raft.utils import flow_viz
@@ -56,6 +57,30 @@ def viz(flo):
     
 #     flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
 
+
+def remap(img,x,y):
+    """ a wrapper of opencv remap, adopted from 
+    img:NxHxW, x:NxHxW ,y:NxHxW
+    out:NxHxW
+    Implement Scaling and Squaring
+    https://github.com/yongleex/DiffeomorphicPIV/blob/main/deformpiv.py#L180
+    """
+    
+    # convert x,y to grid:NxHxWx2
+    grid = torch.stack((x, y), dim=-1)
+    
+    # normalize grid to (-1,1) for grid_sample
+    # under pixel coordination system, x->W, y->H
+    grid_shape = grid.shape[1:3]
+    grid[:,:,:,0] = (grid[:,:,:,0] / (grid_shape[1] - 1) - 0.5)*2
+    grid[:,:,:,1] = (grid[:,:,:,1] / (grid_shape[0] - 1) - 0.5)*2
+
+    # shape img to NxCxHxW for grid_sample
+    img = torch.unsqueeze(img, dim=1)
+    out = F.grid_sample(img, grid, mode='bicubic', align_corners=True)
+    
+    return torch.squeeze(out, dim=1)
+
 def dataload(args):
     model = torch.nn.DataParallel(RAFT(args))
     model.load_state_dict(torch.load(args.model))
@@ -93,18 +118,22 @@ def dataload(args):
             viz(flow_up)
             # torch.Size([2, 440, 1024])
             flow_up = torch.squeeze(flow_up)
+
+            flow_up_u, flow_up_v = flow_up.split(1, 0)
             
             # torch.Size([2, 436, 1024])
             image1_gray_tensor = transform_gray(Image.open(imfile1)).to(DEVICE)
             image2_gray_tensor = transform_gray(Image.open(imfile2)).to(DEVICE)
             # torch.Size([2, 440, 1024])
             image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
-            
+
+            image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
+
             """
             torch.Size([4, 440, 1024])
             四通道分别为 灰度后的i1, 灰度后的i2, u, v
             """
-            result = torch.cat((image1_gray_tensor, image2_gray_tensor, flow_up), 0)
+            result = torch.cat((image2_gray_tensor, image1_gray_tensor_remap, flow_up), 0)
             result = result.cpu()
             result_np = result.numpy()
             data_path = data_path + '/' + imfile1[-5:-9:-1][-1::-1]
