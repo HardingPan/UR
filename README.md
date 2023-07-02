@@ -18,6 +18,7 @@ conda install scipy
 ground truth： $v_t$
 ### 预处理部分
 ![ur](ur.png)
+将image1，image2，u，v，u_t, v_t进行拼接，这部分的数据集使用的是flyingchair
 ### Uncertainty部分
 取一个期望为 $\mu$ 、方差为 ${\sigma}^2$ 的正态分布 $X \sim N(\mu, \sigma)$ ：  
 
