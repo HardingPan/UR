@@ -42,7 +42,7 @@ def viz(flo):
     # map flow to rgb image
     flo = flow_viz.flow_to_image(flo)
     # img_flo = np.concatenate([img, flo], axis=0)
-
+ 
     # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
     # cv2.waitKey()
     cv2.imwrite('res1.png', flo[:, :, [2,1,0]])
@@ -126,13 +126,13 @@ def dataload(args):
             # torch.Size([2, 440, 1024])
             image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
 
-            image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
+            # image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
 
             """
             torch.Size([4, 440, 1024])
             四通道分别为 灰度后的i1, 灰度后的i2, u, v
             """
-            result = torch.cat((image2_gray_tensor, image1_gray_tensor_remap, flow_up), 0)
+            result = torch.cat((image2_gray_tensor, image1_gray_tensor, flow_up), 0)
             result = result.cpu()
             result_np = result.numpy()
             data_path = data_path + '/' + imfile1[-5:-9:-1][-1::-1]
