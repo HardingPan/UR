@@ -3,6 +3,38 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+import os
+import numpy as np
+from torch.utils.data import DataLoader, Dataset
+
+class MyDataset(Dataset):
+    def __init__(self, data_path):
+        self.data_path = data_path
+        self.data_files = sorted(os.listdir(self.data_path))
+
+    def __len__(self):
+        return len(self.data_files)
+
+    """
+    `__getitem__` 方法会在每次加载一个数据时被调用，
+    它会从指定路径中读取 `.npy` 文件，并将其转换为一个 PyTorch 张量。
+    然后，使用 PyTorch 提供的 `DataLoader` 类，将数据划分为批次进行训练。
+    """
+    def __getitem__(self, index):
+        # Load data from file
+        data = np.load(os.path.join(self.data_path, self.data_files[index]))
+        data = data[0:4]
+        # Convert to tensor
+        data = torch.from_numpy(data).float()
+        return data
+    
+def load_data(data_path, batch_size):
+    # Create data loader
+    dataset = MyDataset(data_path)
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    return data_loader
+
 """
 根据 U-Net 的结构定义了一个包含输入通道数为 4、输出通道数为 1 的 `UNet` 模型
 并使用 Adam 优化器对其进行训练
@@ -24,8 +56,7 @@ class DoubleConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-
-# 编码器由四个下采样模块 `Down` 组成，每个下采样模块包含一个最大池化层和两个卷积层
+    
 class Down(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(Down, self).__init__()
@@ -36,7 +67,7 @@ class Down(nn.Module):
 
     def forward(self, x):
         return self.mpconv(x)
-
+    
 # 解码器由四个上采样模块 `Up` 组成，每个上采样模块包含一个上采样层和两个卷积层
 class Up(nn.Module):
     def __init__(self, in_channels, out_channels, bilinear=True):
@@ -95,7 +126,7 @@ class UNet(nn.Module):
         x = self.outc(x)
         sigma = torch.sigmoid(x)
         return sigma
-
+    
 """
 `sigma` 是模型输出的标准差，
 `v_t` 是目标值（即下一帧图像），
@@ -106,24 +137,9 @@ class UNet(nn.Module):
 即模型输出的mu。
 """
 # 定义损失函数
-def custom_loss(sigma, v_t, v):
+def custom_loss(sigma, mu, v_t, v):
     loss = -0.5 * torch.log(sigma ** 2) - 0.5 * (v_t - v) ** 2 / sigma ** 2
     return loss.mean()
-
-
-# def train(net, optimizer, train_loader, device):
-#     net.train()
-#     running_loss = 0.0
-#     for inputs in train_loader:
-#         inputs = inputs.to(device)
-#         optimizer.zero_grad()
-#         sigma = net(inputs)
-#         loss = custom_loss(sigma, v_t, v)
-#         loss.backward()
-#         optimizer.step()
-#         running_loss += loss.item() * inputs.size(0)
-#     epoch_loss = running_loss / len(train_loader.dataset)
-#     return epoch_loss
 
 """
 在下面的的代码中，我们首先使用 `inputs[:, :3, :, :] + inputs[:, 3, :, :].unsqueeze(1)` 
@@ -149,20 +165,6 @@ def train(net, optimizer, train_loader, device):
     epoch_loss = running_loss / len(train_loader.dataset)
     return epoch_loss
 
-
-
-# def test(net, test_loader, device):
-#     net.eval()
-#     running_loss = 0.0
-#     with torch.no_grad():
-#         for inputs in test_loader:
-#             inputs = inputs.to(device)
-#             sigma = net(inputs)
-#             loss = custom_loss(sigma, v_t, v)
-#             running_loss += loss.item() * inputs.size(0)
-#     epoch_loss = running_loss / len(test_loader.dataset)
-#     return epoch_loss
-
 """
 在 `test` 函数中先计算模型在当前帧图像上的输出 `mu`
 然后将其与当前帧图像 `x_t` 进行相加
@@ -177,18 +179,43 @@ def test(net, test_loader, device):
             inputs = inputs.to(device)
             sigma = net(inputs)
             mu = inputs[:, :3, :, :] + inputs[:, 3, :, :].unsqueeze(1)
+            v_t = inputs[:, :3, :, :]
             v = mu
-            loss = custom_loss(sigma, mu, v)
+            loss = custom_loss(sigma, mu, v_t, v)
             running_loss += loss.item() * inputs.size(0)
     epoch_loss = running_loss / len(test_loader.dataset)
     return epoch_loss
 
 # 训练和测试模型
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-net = UNet(n_channels=4, n_classes=1).to(device)
-optimizer = optim.Adam(net.parameters(), lr=0.001)
-num_epochs = 10
-for epoch in range(num_epochs):
-    train_loss = train(net, optimizer, train_loader, device)
-    test_loss = test(net, test_loader, device)
-    print("Epoch [{}/{}], Train Loss: {:.4f}, Test Loss: {:.4f}".format(epoch+1, num_epochs, train_loss, test_loss))
+def main():
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Set hyperparameters
+    lr = 0.0005
+    num_epochs = 10
+    batch_size = 1
+
+    # Load data
+    path = '/home/panding/code/UR/data-chair'
+    train_loader = load_data(path, batch_size)
+    test_loader = load_data(path, batch_size)
+
+    # Create model
+    net = UNet(n_channels=4, n_classes=1).to(device)
+
+    # Create optimizer
+    optimizer = optim.Adam(net.parameters(), lr=lr)
+
+    # Train model
+    for epoch in range(num_epochs):
+        
+        train_loss = train(net, optimizer, train_loader, device)
+        test_loss = test(net, test_loader, device)
+        
+        print(f'Epoch {epoch+1}/{num_epochs}: Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}')
+
+    # Save model
+    torch.save(net.state_dict(), 'model.pt')
+    
+main()
