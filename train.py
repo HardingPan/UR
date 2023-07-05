@@ -23,7 +23,7 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         # Load data from file
         data = np.load(os.path.join(self.data_path, self.data_files[index]))
-        data = data[0:4]
+        # data = data[0:4]
         # Convert to tensor
         data = torch.from_numpy(data).float()
         return data
@@ -197,7 +197,7 @@ def main():
     batch_size = 1
 
     # Load data
-    path = '/home/panding/code/UR/data-chair'
+    path = '/Users/panding/code/ur/UR/data'
     train_loader = load_data(path, batch_size)
     test_loader = load_data(path, batch_size)
 
@@ -218,4 +218,5 @@ def main():
     # Save model
     torch.save(net.state_dict(), 'model.pt')
     
-main()
+if "__name__" == "__main__":
+    main()
