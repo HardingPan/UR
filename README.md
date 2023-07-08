@@ -2,7 +2,7 @@
 
 ## 环境配置
 python=`3.11`
-```
+```python
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
 pip install opencv-python
@@ -53,6 +53,33 @@ data[5]:光流flow_truth场中的y方向位移量真值 v_t
 ```
 #### remap
 上述提到的`data[0]`中的`image1`可以通过remap操作与`image2`对齐，以达到更好的训练效果。
-### net
-#### u-net
+### u-net
+#### 结构
+包含四个下采样层和四个上采样层的 U-Net 结构。
+```python
+# 初始化模型
+model = UNet(in_channels=6, out_channels=2)
+```
+#### forward
+```python
+def forward(self, x):
+  skips = []
+  for downsample in self.down:
+    x = downsample(x)
+    skips.append(x)
+    x = self.pool(x)
+  
+  skips = reversed(skips[:-1])
+  for i, upsample in enumerate(self.up):
+    skip = next(skips)
+    x = upsample(x)
+    x = torch.cat([x, skip], dim=1)
+  # 输出 sigma 平方值
+  sigma2 = self.out(x)
+  # 从后两个通道的目标张量中提取真实的运动场 v_t
+  v_t = x[:, 4:6, :, :]
+  
+  return sigma2, v_t
+```
+
 
