@@ -41,7 +41,7 @@ $$loss=-\bigg(\frac{1}{2}ln{\sigma}^2+\frac{(v_t-\widehat{v})^2}{2{\sigma}^2+\xi
 ### data
 本项目的data基于flying-chairs数据集[flying-chairs](https://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html)。
 #### input
-通过`dataset.ipynb`可以把flying-chairs数据集制作为适用于本项目的data。  
+通过`dataset-chair.ipynb`可以把flying-chairs数据集制作为适用于本项目的data。  
 data类型为`6wh`的npy张量，其中六个通道的内容分别为：
 ```
 data[0]:image1
@@ -51,4 +51,8 @@ data[3]:计算得到的光流flow场中的y方向位移量 v
 data[4]:光流flow_truth场中的x方向位移量真值 u_t
 data[5]:光流flow_truth场中的y方向位移量真值 v_t
 ```
+#### remap
+上述提到的`data[0]`中的`image1`可以通过remap操作与`image2`对齐，以达到更好的训练效果。
+### net
+#### u-net
 
