@@ -123,7 +123,7 @@ if __name__ == '__main__':
     MOMENTUM = 0.9
 
     # 加载数据集
-    train_dataset = MyDataset('data/train')
+    train_dataset = MyDataset('/home/panding/code/UR/data-chair')
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # 初始化模型和优化器
