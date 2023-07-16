@@ -2,10 +2,92 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
-import os
-import numpy as np
+import torch.utils.data as data
 from torch.utils.data import DataLoader, Dataset
+
+import numpy as np
+import os
+
+class double_conv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(double_conv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
+class up_conv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(up_conv, self).__init__()
+        self.up = nn.Sequential(
+            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.up(x)
+        return x
+        
+class UNet(nn.Module):
+    def __init__(self, in_channels=4, out_channels=1):
+        super(UNet, self).__init__()
+
+        # Down sampling
+        self.conv1 = double_conv(in_channels, 64)
+        self.conv2 = double_conv(64, 128)
+        self.conv3 = double_conv(128, 256)
+        self.conv4 = double_conv(256, 512)
+
+        # Up sampling
+        self.up_conv1 = up_conv(512, 256)
+        self.conv5 = double_conv(512, 256)
+        self.up_conv2 = up_conv(256, 128)
+        self.conv6 = double_conv(256, 128)
+        self.up_conv3 = up_conv(128, 64)
+        self.conv7 = double_conv(128, 64)
+
+        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        # Down sampling
+        x1 = self.conv1(x)
+        x2 = self.conv2(F.max_pool2d(x1, 2))
+        x3 = self.conv3(F.max_pool2d(x2, 2))
+        x4 = self.conv4(F.max_pool2d(x3, 2))
+
+        # Up sampling
+        x = self.up_conv1(x4)
+        x = torch.cat([x3, x], dim=1)
+        x = self.conv5(x)
+        x = self.up_conv2(x)
+        x = torch.cat([x2, x], dim=1)
+        x = self.conv6(x)
+        x = self.up_conv3(x)
+        x = torch.cat([x1, x], dim=1)
+        x = self.conv7(x)
+
+        x = self.final_conv(x)
+        return x
+
+
+# def custom_loss(sigma_sq, v, v_t):
+#     loss = 0.5 * torch.log(sigma_sq) + (v_t - v) ** 2 / (2 * sigma_sq)
+#     return torch.mean(loss)
+
+def custom_loss(sigma_sq, v, v_t):
+    eps = 1e-8
+    sigma_sq = sigma_sq + eps
+    loss = 0.5 * torch.log(sigma_sq) + (v_t - v) ** 2 / (2 * sigma_sq)
+    return torch.mean(loss)
 
 class MyDataset(Dataset):
     def __init__(self, data_path):
@@ -35,188 +117,61 @@ def load_data(data_path, batch_size):
 
     return data_loader
 
-"""
-根据 U-Net 的结构定义了一个包含输入通道数为 4、输出通道数为 1 的 `UNet` 模型
-并使用 Adam 优化器对其进行训练
-在训练和测试函数中，我们只需要将 U-Net 的输出 `sigma` 送入损失函数 `custom_loss` 中即可。
-"""
+def train(model, optimizer, data_loader, num_epochs, device):
+    model.to(device)
 
-# 用于实现两个卷积层和一个批归一化层的组合
-class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DoubleConv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        return self.conv(x)
-    
-class Down(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(Down, self).__init__()
-        self.mpconv = nn.Sequential(
-            nn.MaxPool2d(2),
-            DoubleConv(in_channels, out_channels)
-        )
-
-    def forward(self, x):
-        return self.mpconv(x)
-    
-# 解码器由四个上采样模块 `Up` 组成，每个上采样模块包含一个上采样层和两个卷积层
-class Up(nn.Module):
-    def __init__(self, in_channels, out_channels, bilinear=True):
-        super(Up, self).__init__()
-
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        else:
-            self.up = nn.ConvTranspose2d(in_channels//2, in_channels//2, kernel_size=2, stride=2)
-
-        self.conv = DoubleConv(in_channels, out_channels)
-
-    def forward(self, x1, x2):
-        x1 = self.up(x1)
-
-        # pad x1 to match x2 size
-        diff_h = x2.size()[2] - x1.size()[2]
-        diff_w = x2.size()[3] - x1.size()[3]
-        x1 = F.pad(x1, [diff_w//2, diff_w-diff_w//2, diff_h//2, diff_h-diff_h//2])
-
-        x = torch.cat([x2, x1], dim=1)
-        return self.conv(x)
-    
-"""
-在 `UNet` 类的 `forward` 方法中
-首先将输入数据 `x` 送入编码器中，然后将编码器的输出 `x5` 送入解码器中。
-在解码器中，我们将 `x5` 与编码器中的输出 `x4`、`x3`、`x2`、`x1` 依次进行拼接，
-并送入对应的上采样模块中进行上采样和卷积操作
-最终输出一个概率分布中的sigma^2。
-"""
-class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes):
-        super(UNet, self).__init__()
-
-        self.inc = DoubleConv(n_channels, 64)
-        self.down1 = Down(64, 128)
-        self.down2 = Down(128, 256)
-        self.down3 = Down(256, 512)
-        self.down4 = Down(512, 512)
-        self.up1 = Up(1024, 256)
-        self.up2 = Up(512, 128)
-        self.up3 = Up(256, 64)
-        self.up4 = Up(128, 64)
-        self.outc = nn.Conv2d(64, n_classes, kernel_size=1)
-
-    def forward(self, x):
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-        x = self.outc(x)
-        sigma = torch.sigmoid(x)
-        return sigma
-    
-"""
-`sigma` 是模型输出的标准差，
-`v_t` 是目标值（即下一帧图像），
-`v` 是模型输出的预测值（即当前帧图像加上运动分量）
-在 `test` 函数中，需要计算模型在测试集上的损失。
-由于测试集中没有目标值 `v_t`，因此我们需要用当前帧图像 `x_t` 作为目标值进行计算。
-这样，公式中的 `v_t` 就是当前帧图像 `x_t`，而 `v` 则是模型在当前帧图像 `x_t` 上的预测值
-即模型输出的mu。
-"""
-# 定义损失函数
-def custom_loss(sigma, mu, v_t, v):
-    loss = -0.5 * torch.log(sigma ** 2) - 0.5 * (v_t - v) ** 2 / sigma ** 2
-    return loss.mean()
-
-"""
-在下面的的代码中，我们首先使用 `inputs[:, :3, :, :] + inputs[:, 3, :, :].unsqueeze(1)` 
-得到模型在当前帧图像上的预测值 `v`。
-然后，我们将 `sigma`、`mu` 和 `v` 送入损失函数 `custom_loss` 中进行计算，
-得到模型在当前帧图像上的损失 `loss`。最后，我们将所有测试集上的损失相加并平均，得到模型在测试集上的平均损失。
-"""
-# 定义训练函数
-def train(net, optimizer, train_loader, device):
-    net.train()
-    running_loss = 0.0
-    for inputs in train_loader:
-        inputs = inputs.to(device)
-        optimizer.zero_grad()
-        sigma = net(inputs)
-        mu = inputs[:, :3, :, :] + inputs[:, 3, :, :].unsqueeze(1)
-        v_t = inputs[:, :3, :, :]
-        v = mu
-        loss = custom_loss(sigma, mu, v_t, v)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item() * inputs.size(0)
-    epoch_loss = running_loss / len(train_loader.dataset)
-    return epoch_loss
-
-"""
-在 `test` 函数中先计算模型在当前帧图像上的输出 `mu`
-然后将其与当前帧图像 `x_t` 进行相加
-得到模型在当前帧图像上的预测值 `v`。这样，就可以使用公式计算模型在当前帧图像上的损失了
-"""
-# 定义测试函数
-def test(net, test_loader, device):
-    net.eval()
-    running_loss = 0.0
-    with torch.no_grad():
-        for inputs in test_loader:
-            inputs = inputs.to(device)
-            sigma = net(inputs)
-            mu = inputs[:, :3, :, :] + inputs[:, 3, :, :].unsqueeze(1)
-            v_t = inputs[:, :3, :, :]
-            v = mu
-            loss = custom_loss(sigma, mu, v_t, v)
-            running_loss += loss.item() * inputs.size(0)
-    epoch_loss = running_loss / len(test_loader.dataset)
-    return epoch_loss
-
-# 训练和测试模型
-def main():
-    # Set device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # Set hyperparameters
-    lr = 0.0005
-    num_epochs = 10
-    batch_size = 1
-
-    # Load data
-    path = '/Users/panding/code/ur/UR/data'
-    train_loader = load_data(path, batch_size)
-    test_loader = load_data(path, batch_size)
-
-    # Create model
-    net = UNet(n_channels=4, n_classes=1).to(device)
-
-    # Create optimizer
-    optimizer = optim.Adam(net.parameters(), lr=lr)
-
-    # Train model
     for epoch in range(num_epochs):
-        
-        train_loss = train(net, optimizer, train_loader, device)
-        test_loss = test(net, test_loader, device)
-        
-        print(f'Epoch {epoch+1}/{num_epochs}: Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}')
+        epoch_loss = 0.0
+        epoch_metric = 0.0
+        num_batches = 0
 
-    # Save model
-    torch.save(net.state_dict(), 'model.pt')
-    
-if "__name__" == "__main__":
-    main()
+        for batch in data_loader:
+            batch = batch.to(device)
+
+            inputs = batch[:, :4, :, :]
+            v = batch[:, 2:4, :, :]
+            v_t = batch[:, 4:6, :, :]
+
+            # 将梯度清零
+            optimizer.zero_grad()
+            # 前向传递
+            sigma2 = model(inputs)
+            # 计算损失和评估指标
+            loss = custom_loss(sigma2, v, v_t)
+            metric = -loss.item()
+            # 反向传播和优化
+            loss.backward()
+            optimizer.step()
+            # 更新损失和评估指标
+            epoch_loss += loss.item()
+            epoch_metric += metric
+            num_batches += 1
+
+        # 计算平均损失和评估指标
+        avg_loss = epoch_loss / num_batches
+        avg_metric = epoch_metric / num_batches
+
+        # 打印训练进度
+        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.4f}, Metric={avg_metric:.4f}")
+
+    torch.save(model.state_dict(), 'model.pt')
+
+"""
+------------------------------训练部分------------------------------
+"""
+# 加载数据
+data_path = '/home/panding/code/UR/data-chair'
+batch_size = 1
+
+my_data_loader = load_data(data_path, batch_size)
+
+# 初始化模型、优化器和设备
+net = UNet(in_channels=4, out_channels=1)
+Adam_optimizer = optim.Adam(net.parameters(), lr=0.001)
+my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 训练循环
+my_num_epochs = 10
+
+if __name__ == "__main__":
+    train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)
