@@ -176,13 +176,13 @@ def train(model, optimizer, data_loader, num_epochs, device):
         # 打印训练进度
         print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.4f}, Metric={avg_metric:.4f}")
 
-    plt.plot(losses)
-    plt.xlabel('Epoch')
-    plt.ylabel('loss')
-    plt.yscale('log')
-    plt.title('Training Loss')
-    plt.savefig('loss.png')    
-    torch.save(model.state_dict(), 'model.pt')
+        plt.plot(losses)
+        plt.xlabel('Epoch')
+        plt.ylabel('loss')
+        plt.yscale('log')
+        plt.title('Training Loss')
+        plt.savefig('loss.png')    
+        torch.save(model.state_dict(), 'model.pt')
 
 """
 ------------------------------训练部分------------------------------
@@ -199,7 +199,7 @@ Adam_optimizer = optim.Adam(net.parameters(), lr=0.01)
 my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 训练循环
-my_num_epochs = 2
+my_num_epochs = 100
 
 if __name__ == '__main__':
     train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)
