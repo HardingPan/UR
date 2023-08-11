@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from raft.utils.utils import bilinear_sampler, coords_grid
+from utils.utils import bilinear_sampler, coords_grid
 
 try:
     import raft.alt_cuda_corr

@@ -133,6 +133,26 @@ class FlyingChairs(FlowDataset):
                 self.flow_list += [ flows[i] ]
                 self.image_list += [ [images[2*i], images[2*i+1]] ]
 
+class Piv(FlowDataset):
+    """
+    Piv的dataset
+    路径设置为piv数据集位置
+    """
+    def __init__(self, aug_params=None, split='train', root='/home/panding/code/UR/uniform'):
+        super(Piv, self).__init__(aug_params)
+        
+        # 加载piv数据集中的tif和flo数据
+        images1 = sorted(glob(osp.join(root, '*_img1.tif')))
+        images2 = sorted(glob(osp.join(root, '*_img2.tif')))
+        flows = sorted(glob(osp.join(root, '*.flo')))
+        # 确保数据集中tif的图像对数量和flow数据数量相等
+        # assert (len(images)//2 == len(flows))
+        assert (len(images1) == len(flows))
+        
+        for flow, img1, img2 in zip(flows, images1, images2):
+            self.flow_list += [[flow]]
+            self.image_list += [[img1, img2]]
+
 
 class FlyingThings3D(FlowDataset):
     def __init__(self, aug_params=None, root='datasets/FlyingThings3D', dstype='frames_cleanpass'):
@@ -202,6 +222,12 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
     if args.stage == 'chairs':
         aug_params = {'crop_size': args.image_size, 'min_scale': -0.1, 'max_scale': 1.0, 'do_flip': True}
         train_dataset = FlyingChairs(aug_params, split='training')
+    
+    # 定义piv数据的dataloader
+    if args.stage == 'piv':
+        aug_params = {'crop_size': args.image_size, 'min_scale': -0.1, 'max_scale': 1.0, 'do_flip': True}
+        # 使用piv数据的dataset方法
+        train_dataset = Piv(aug_params, split='training')
     
     elif args.stage == 'things':
         aug_params = {'crop_size': args.image_size, 'min_scale': -0.4, 'max_scale': 0.8, 'do_flip': True}
