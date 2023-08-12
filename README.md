@@ -39,7 +39,31 @@ $$loss=-\bigg(\frac{1}{2}ln{\sigma}^2+\frac{(v_t-\widehat{v})^2}{2{\sigma}^2+\xi
 
 ## 程序部分
 ### data
-本项目的data基于flying-chairs数据集[flying-chairs](https://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html)。
+本项目的data基于piv数据
+#### uniform
+```
+raft: 1 - 600
+ur: 601 - 900
+test: 901 - 1000
+```
+#### backstep
+```
+raft: Re800 1 - 300, Re1000 1 - 300, Re1200 1 - 300
+ur: Re800 301 - 450, Re1000 301 - 450, Re1200 301 - 450
+test: Re800 451 - 500, Re1000 451 - 500, Re1200 451 - 500
+```
+#### SQG
+```
+raft: 1 - 600
+ur: 601 - 900
+test: 901 - 1000
+```
+#### total
+```
+raft: 2100
+ur: 1050
+test: 350
+```
 #### input
 通过`dataset-chair.ipynb`可以把flying-chairs数据集制作为适用于本项目的data。  
 data类型为`6wh`的npy张量，其中六个通道的内容分别为：

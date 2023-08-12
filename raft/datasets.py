@@ -162,7 +162,7 @@ class Piv(FlowDataset):
     Piv的dataset
     路径设置为piv数据集位置
     """
-    def __init__(self, aug_params=None, split='train', root='/home/panding/code/UR/chair/backstep'):
+    def __init__(self, aug_params=None, split='train', root='/home/panding/code/UR/piv-data/raft'):
         super(Piv, self).__init__(aug_params)
         
         # 加载piv数据集中的tif和flo数据
@@ -173,7 +173,22 @@ class Piv(FlowDataset):
         # assert (len(images)//2 == len(flows))
         assert (len(images1) == len(flows))
         
-        for flow, img1, img2 in zip(flows, images1, images2):
+        idx = np.random.permutation(len(images1))
+        images1_shuffled = [images1[i] for i in idx]
+        images2_shuffled = [images2[i] for i in idx]
+        flows_shuffled = [flows[i] for i in idx]
+        
+        """import numpy as np
+        list1 = [1, 2, 3, 4, 5]
+        list2 = ['a', 'b', 'c', 'd', 'e']
+        # 生成随机排列的索引数组
+        idx = np.random.permutation(len(list1))
+        # 切片得到随机排序的列表
+        list1_shuffled = [list1[i] for i in idx]
+        list2_shuffled = [list2[i] for i in idx]
+        print(list1_shuffled)
+        # 输出：[2, 5, 1, 4, 3]print(list2_shuffled)  # 输出：['b', 'e', 'a', 'd', 'c']"""
+        for flow, img1, img2 in zip(flows_shuffled, images1_shuffled, images2_shuffled):
             # 这边载入的是文件名
             self.flow_list.append(flow)
             self.image_list.append([img1, img2])
@@ -250,7 +265,8 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
     
     # 定义piv数据的dataloader
     if args.stage == 'piv':
-        aug_params = {'crop_size': args.image_size, 'min_scale': -0.1, 'max_scale': 1.0, 'do_flip': True}
+        # aug_params = {'crop_size': args.image_size, 'min_scale': -0.1, 'max_scale': 1.0, 'do_flip': True}
+        aug_params = None
         # 使用piv数据的dataset方法
         train_dataset = Piv(aug_params, split='training')
     

@@ -189,7 +189,8 @@ def train(args):
             logger.push(metrics)
 
             if total_steps % VAL_FREQ == VAL_FREQ - 1:
-                PATH = 'checkpoints/%d_%s.pth' % (total_steps+1, args.name)
+                PATH = '/home/panding/code/UR/UR/raft/checkpoints/%d_%s.pth' % (total_steps+1, args.name)
+                # PATH = '/home/panding/code/UR/UR/raft/checkpoints/1.pth'
                 torch.save(model.state_dict(), PATH)
 
                 results = {}
@@ -214,7 +215,7 @@ def train(args):
                 break
 
     logger.close()
-    PATH = '/home/panding/code/UR/UR/checkpoints/model.pth'
+    PATH = '/home/panding/code/UR/UR/checkpoints/model-8-12.pth'
     torch.save(model.state_dict(), PATH)
 
     return PATH
