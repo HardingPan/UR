@@ -158,7 +158,7 @@ def dataload(args):
             # torch.Size([2, 440, 1024])
             image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
 
-            # image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
+            image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
             
             # 读取flow的真值
             # flow_path = '/home/panding/code/UR/piv-data/ur' + flow
@@ -168,7 +168,7 @@ def dataload(args):
             torch.Size([6, 440, 1024])
             六通道分别为 灰度后的i1, 灰度后的i2, u, v, u_t, v_t
             """
-            result = torch.cat((image2_gray_tensor, image1_gray_tensor, flow_up, flow_truth), 0)
+            result = torch.cat((image2_gray_tensor, image1_gray_tensor_remap, flow_up, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
             # data_path = data_path + '/' + imfile1[6:-4]

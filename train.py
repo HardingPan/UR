@@ -189,7 +189,7 @@ def train(model, optimizer, data_loader, num_epochs, device):
 """
 # 加载数据
 data_path = '/home/panding/code/UR/data-chair'
-batch_size = 8
+batch_size = 2
 
 my_data_loader = load_data(data_path, batch_size)
 

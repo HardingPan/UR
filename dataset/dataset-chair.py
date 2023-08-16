@@ -13,27 +13,36 @@ from torchvision import transforms
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from raft.raft import RAFT
-from raft.utils import flow_viz
-from raft.utils.utils import InputPadder
+from raft import RAFT
+from utils import flow_viz
+from utils.utils import InputPadder
 
 DEVICE = 'cuda'
 
 batch_size=3
 
-transform_rgb = transforms.ToTensor()
+transform_origin = transforms.ToTensor()
 
 transform_gray = transforms.Compose([
     transforms.Grayscale(num_output_channels=1), # 彩色图像转灰度图像num_output_channels默认1
     transforms.ToTensor()
 ])
-
-# rgb图片读取
-def load_image(imfile):
+"""
+def load_image2cat(imfile):
     img = np.array(Image.open(imfile)).astype(np.uint8)
     # img = np.array(Image.open(imfile))
     img = torch.from_numpy(img).permute(2, 0, 1).float()
     return img[None].to(DEVICE)
+"""
+# 灰度图像读取
+def load_image(imfile):
+    img = np.array(Image.open(imfile)).astype(np.uint8)
+    img_rgb = np.zeros((256, 256, 3), dtype=np.uint8)
+    img_rgb[:, :, 0] = img
+    img_rgb[:, :, 1] = img
+    img_rgb[:, :, 2] = img
+    img_rgb = torch.from_numpy(img_rgb).permute(2, 0, 1).float()
+    return img_rgb[None].to(DEVICE)
 
 # 图像可视化
 def viz(flo):
@@ -92,20 +101,34 @@ def dataload(args):
     model.to(DEVICE)
     model.eval()
     
-    data_path = '/home/panding/code/UR/data-chair'
+    data_path = '/home/panding/code/UR/piv-data/ur'
     
     with torch.no_grad():
         # 读取路径内的成对图像和flow真值
-        images = glob.glob(os.path.join(args.path, '*.png')) + \
+        images1 = glob.glob(os.path.join(args.path, '*.png')) + \
                  glob.glob(os.path.join(args.path, '*.jpg')) + \
-                 glob.glob(os.path.join(args.path, '*.ppm'))
+                 glob.glob(os.path.join(args.path, '*.ppm')) + \
+                 glob.glob(os.path.join(args.path, '*_img1.tif'))
+        
+        images2 = glob.glob(os.path.join(args.path, '*.png')) + \
+                 glob.glob(os.path.join(args.path, '*.jpg')) + \
+                 glob.glob(os.path.join(args.path, '*.ppm')) + \
+                 glob.glob(os.path.join(args.path, '*_img2.tif'))
         flow_truth = glob.glob(os.path.join(args.path, '*.flo'))
         
-        images = sorted(images)
-        images_num = len(images)
+        images1 = sorted(images1)
+        images2 = sorted(images2)
+        assert (len(images1) == len(images2))
+
+        idx = np.random.permutation(len(images1))
+        images1_shuffled = [images1[i] for i in idx]
+        images2_shuffled = [images2[i] for i in idx]
+        flows_shuffled = [flow_truth[i] for i in idx]
+
+        images_num = len(image1)
         images_loading_num = 1
         print('\n', '--------------images loading...-------------', '\n')
-        for imfile1, imfile2 in zip(images[:-1], images[1:]):
+        for flow, imfile1, imfile2 in zip(flows_shuffled, images1_shuffled, images2_shuffled):
             
             images_loading_num = images_loading_num + 1
             # torch.Size([3, 436, 1024])
@@ -128,16 +151,17 @@ def dataload(args):
             flow_up_u, flow_up_v = flow_up.split(1, 0)
             
             # torch.Size([2, 436, 1024])
-            image1_gray_tensor = transform_gray(Image.open(imfile1)).to(DEVICE)
-            image2_gray_tensor = transform_gray(Image.open(imfile2)).to(DEVICE)
+            image1_gray_tensor = transform_origin(Image.open(imfile1)).to(DEVICE)
+            image2_gray_tensor = transform_origin(Image.open(imfile2)).to(DEVICE)
+            
             # torch.Size([2, 440, 1024])
             image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
 
             # image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
             
             # 读取flow的真值
-            flow_path = '/home/panding/code/UR/chair/' + imfile1[6:-8] + 'flow.flo'
-            flow_truth = load_flow_to_numpy(flow_path).to(DEVICE)
+            # flow_path = '/home/panding/code/UR/piv-data/ur' + flow
+            flow_truth = load_flow_to_numpy(flow).to(DEVICE)
 
             """
             torch.Size([6, 440, 1024])
