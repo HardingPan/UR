@@ -55,15 +55,9 @@ def viz(flo):
     # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
     # cv2.waitKey()
     cv2.imwrite('res1.png', flo[:, :, [2,1,0]])
-
+"""
 # 将第一帧对其到第二帧
 def remap(img,x,y):
-    """ a wrapper of opencv remap, adopted from 
-    img:NxHxW, x:NxHxW ,y:NxHxW
-    out:NxHxW
-    Implement Scaling and Squaring
-    https://github.com/yongleex/DiffeomorphicPIV/blob/main/deformpiv.py#L180
-    """
     
     # convert x,y to grid:NxHxWx2
     grid = torch.stack((x, y), dim=-1)
@@ -79,7 +73,28 @@ def remap(img,x,y):
     out = F.grid_sample(img, grid, mode='bicubic', align_corners=True)
     
     return torch.squeeze(out, dim=1)
+"""
+def remap(img, u, v, device):
+    img = img.cpu().numpy().squeeze(0)
+    u = u.cpu().numpy().squeeze()
+    v = v.cpu().numpy().squeeze()
+    # print(img.shape)
 
+    # print(u.shape)
+    # print(u.dtype)
+    x, y = np.meshgrid(np.arange(u.shape[1]), np.arange(v.shape[0]))
+    x = np.float32(x)
+    x = x + u
+    y = np.float32(y)
+    y = y + v
+
+    # print(x.shape)
+
+    re = cv2.remap(img, x, y, interpolation = 4)
+    re = torch.from_numpy(re)
+    re = re.unsqueeze(0).to(device)
+
+    return re
 # 读取flo为tensor
 def load_flow_to_numpy(path):
     with open(path, 'rb') as f:
@@ -130,7 +145,7 @@ def dataload(args):
         images_loading_num = 1
         print('\n', '--------------images loading...-------------', '\n')
         for flow, imfile1, imfile2 in zip(flows_shuffled, images1_shuffled, images2_shuffled):
-            
+            # print(f"flow: {flow}, img1: {imfile1}, img2: {imfile2}")
             images_loading_num = images_loading_num + 1
             # torch.Size([3, 436, 1024])
             image1_rgb_tensor = load_image(imfile1)
@@ -158,7 +173,7 @@ def dataload(args):
             # torch.Size([2, 440, 1024])
             image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
 
-            image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v)
+            image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v, DEVICE)
             
             # 读取flow的真值
             # flow_path = '/home/panding/code/UR/piv-data/ur' + flow
