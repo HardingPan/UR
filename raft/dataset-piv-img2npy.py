@@ -1,3 +1,10 @@
+"""
+用于将数据集中的img1、img2、flow文件与raft网络计算的结果打包生成npy文件。dataset指令示例如下：
+```zsh
+python dataset-piv-img2npy.py --model /home/panding/code/UR/UR/checkpoints/model-8-14-4.pth --path /home/panding/code/UR/piv-data/ur
+```
+"""
+
 import sys
 sys.path.append('core')
 

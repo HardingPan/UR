@@ -171,17 +171,6 @@ def dataload(args):
             flow_up_3_u, flow_up_3_v = flow_up_3.split(1, 0)
             flow_up_4_u, flow_up_4_v = flow_up_4.split(1, 0)
             
-            # # torch.Size([2, 436, 1024])
-            # image1_gray_tensor = transform_origin(Image.open(imfile1)).to(DEVICE)
-            # image2_gray_tensor = transform_origin(Image.open(imfile2)).to(DEVICE)
-            
-            # # torch.Size([2, 440, 1024])
-            # image1_gray_tensor, image2_gray_tensor = padder.pad(image1_gray_tensor, image2_gray_tensor)
-
-            # image1_gray_tensor_remap = remap(image1_gray_tensor, flow_up_u, flow_up_v, DEVICE)
-            
-            # 读取flow的真值
-            # flow_path = '/home/panding/code/UR/piv-data/ur' + flow
             flow_truth = load_flow_to_numpy(flow).to(DEVICE)
 
             """
@@ -191,11 +180,12 @@ def dataload(args):
             result = torch.cat((flow_up_1_u, flow_up_1_v, flow_up_2_u, flow_up_2_v,flow_up_3_u, flow_up_3_v,flow_up_4_u, flow_up_4_v, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
+            save_path = imfile1[0:31] + 'baseline-multimodel' + imfile1[33:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
-            data_path = imfile1[0:19] + imfile1[:-9]
-            print(data_path)
+            # data_path = imfile1[0:20] + imfile1[:-9]
+            print(f"当前存储位置为: {save_path}")
 
-            # np.save(data_path, result_np)
+            np.save(save_path, result_np)
             # data_path = '/home/panding/code/UR/data-chair'
             if images_loading_num % 5 == 0:
                 print('\n', '--------------images loaded: ', images_loading_num, ' / ', images_num, '-------------', '\n')

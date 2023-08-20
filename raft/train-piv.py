@@ -1,3 +1,9 @@
+"""
+train-piv.py
+训练针对piv图像(256*256)的raft模型
+训练指令: python train-piv.py --name piv --stage piv --gpus 0 --num_steps 7800 --batch_size 1 --lr 0.00005 --image_size 256 256 --mixed_precision
+"""
+
 from __future__ import print_function, division
 import sys
 sys.path.append('core')
@@ -41,7 +47,7 @@ except:
 # exclude extremly large displacements
 MAX_FLOW = 400
 SUM_FREQ = 100
-VAL_FREQ = 5000
+VAL_FREQ = 8000
 
 
 def sequence_loss(flow_preds, flow_gt, valid, gamma=0.8, max_flow=MAX_FLOW):
@@ -160,7 +166,7 @@ def train(args):
     scaler = GradScaler(enabled=args.mixed_precision)
     logger = Logger(model, scheduler)
 
-    VAL_FREQ = 5000
+    VAL_FREQ = 8000
     add_noise = True
 
     should_keep_training = True
@@ -215,7 +221,7 @@ def train(args):
                 break
 
     logger.close()
-    PATH = '/home/panding/code/UR/UR/checkpoints/model-8-12.pth'
+    PATH = '/home/panding/code/UR/UR/raft/checkpoints/model-8-20.pth'
     torch.save(model.state_dict(), PATH)
 
     return PATH
