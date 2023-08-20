@@ -105,5 +105,22 @@ def forward(self, x):
   
   return sigma2, v_t
 ```
-
-
+## 核心程序说明
+### raft文件夹
+#### checkpoints文件夹
+存放训练的raft-piv模型与其对应的训练日志
+#### train-piv.py
+训练针对piv图像(256*256)的raft模型。训练指令如下：
+```zsh
+python train-piv.py --name piv --stage piv --gpus 0 --num_steps 7800 --batch_size 1 --lr 0.00005 --image_size 256 256 --mixed_precision
+```
+#### dataset-piv-img2npy.py
+用于将数据集中的img1、img2、flow文件与raft网络计算的结果打包生成npy文件。dataset指令示例如下：
+```zsh
+python dataset-piv-img2npy.py --model /home/panding/code/UR/UR/checkpoints/model-8-14-4.pth --path /home/panding/code/UR/piv-data/ur
+```
+#### dataset-baseline-multimodel.py
+baseline对比方案一（使用多个训练的raft模型的结果值计算不确定度）的dataset代码。dataset指令示例如下：
+```zsh
+python dataset-baseline-multimodel.py --model1 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-1.pth --model2 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-2.pth --model3 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-3.pth --model4 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-4.pth --path /home/panding/code/UR/piv-data/ur
+```

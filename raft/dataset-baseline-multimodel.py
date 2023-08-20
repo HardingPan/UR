@@ -1,3 +1,8 @@
+"""
+baseline对比方案一(使用多个训练的raft模型的结果值计算不确定度)的dataset代码。dataset指令示例如下:
+```zsh
+python dataset-baseline-multimodel.py --model1 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-1.pth --model2 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-2.pth --model3 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-3.pth --model4 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-4.pth --path /home/panding/code/UR/piv-data/ur
+"""
 import sys
 sys.path.append('core')
 

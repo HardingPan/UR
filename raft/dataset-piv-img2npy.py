@@ -1,7 +1,7 @@
 """
-用于将数据集中的img1、img2、flow文件与raft网络计算的结果打包生成npy文件。dataset指令示例如下：
+用于将数据集中的img1、img2、flow文件与raft网络计算的结果打包生成npy文件。dataset指令示例如下:
 ```zsh
-python dataset-piv-img2npy.py --model /home/panding/code/UR/UR/checkpoints/model-8-14-4.pth --path /home/panding/code/UR/piv-data/ur
+python dataset-piv-img2npy.py --model /home/panding/code/UR/UR/raft/checkpoints/2.pth --path /home/panding/code/UR/piv-data/ur
 ```
 """
 
@@ -44,10 +44,12 @@ def load_image2cat(imfile):
 # 灰度图像读取
 def load_image(imfile):
     img = np.array(Image.open(imfile)).astype(np.uint8)
+    # img_rgb = img[:, :, np.newaxis]
     img_rgb = np.zeros((256, 256, 3), dtype=np.uint8)
     img_rgb[:, :, 0] = img
     img_rgb[:, :, 1] = img
     img_rgb[:, :, 2] = img
+    cv2.imwrite('/home/panding/code/UR/UR/raft/rgb.png', img_rgb)
     img_rgb = torch.from_numpy(img_rgb).permute(2, 0, 1).float()
     return img_rgb[None].to(DEVICE)
 
@@ -117,12 +119,20 @@ def load_flow_to_numpy(path):
 
 def dataload(args):
     model = torch.nn.DataParallel(RAFT(args))
+    
+    # 直接加载pth文件
     model.load_state_dict(torch.load(args.model))
-
     model = model.module
     model.to(DEVICE)
     model.eval()
     
+    # 加载的是tar文件
+    # ckpt = torch.load(args.model)
+    # model.to(DEVICE)
+    # model.load_state_dict(ckpt['model_state_dict'])
+    # model.eval()
+
+
     data_path = '/home/panding/code/UR/piv-data/ur'
     
     with torch.no_grad():
