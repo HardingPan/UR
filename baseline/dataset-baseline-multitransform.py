@@ -135,7 +135,7 @@ def dataload(args):
             padder = InputPadder(image1_rgb_tensor.shape)
             image1, image2 = padder.pad(image1_rgb_tensor, image2_rgb_tensor)
             
-            
+            print(image1.shape)
             
             # torch.Size([1, 2, 440, 1024])
             flow_low_1, flow_up_1 = model(image1, image2, iters=20, test_mode=True)
@@ -143,14 +143,14 @@ def dataload(args):
             # viz(flow_up)
             # torch.Size([2, 440, 1024])
             flow_up_1 = torch.squeeze(flow_up_1)
-            flow_up_2 = torch.squeeze(flow_up_2)
-            flow_up_3 = torch.squeeze(flow_up_3)
-            flow_up_4 = torch.squeeze(flow_up_4)
+            # flow_up_2 = torch.squeeze(flow_up_2)
+            # flow_up_3 = torch.squeeze(flow_up_3)
+            # flow_up_4 = torch.squeeze(flow_up_4)
 
             flow_up_1_u, flow_up_1_v = flow_up_1.split(1, 0)
-            flow_up_2_u, flow_up_2_v = flow_up_2.split(1, 0)
-            flow_up_3_u, flow_up_3_v = flow_up_3.split(1, 0)
-            flow_up_4_u, flow_up_4_v = flow_up_4.split(1, 0)
+            # flow_up_2_u, flow_up_2_v = flow_up_2.split(1, 0)
+            # flow_up_3_u, flow_up_3_v = flow_up_3.split(1, 0)
+            # flow_up_4_u, flow_up_4_v = flow_up_4.split(1, 0)
             
             flow_truth = load_flow_to_numpy(flow).to(DEVICE)
 
@@ -158,10 +158,11 @@ def dataload(args):
             torch.Size([6, 440, 1024])
             六通道分别为 灰度后的i1, 灰度后的i2, u, v, u_t, v_t
             """
-            result = torch.cat((flow_up_1_u, flow_up_1_v, flow_up_2_u, flow_up_2_v,flow_up_3_u, flow_up_3_v,flow_up_4_u, flow_up_4_v, flow_truth), 0)
+            result = torch.cat((flow_up_1_u, flow_up_1_v), 0)
+            # result = torch.cat((flow_up_1_u, flow_up_1_v, flow_up_2_u, flow_up_2_v,flow_up_3_u, flow_up_3_v,flow_up_4_u, flow_up_4_v, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
-            save_path = imfile1[0:31] + 'baseline-multimodel' + imfile1[33:-9]
+            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[33:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
             # data_path = imfile1[0:20] + imfile1[:-9]
             print(f"当前存储位置为: {save_path}")
@@ -173,10 +174,7 @@ def dataload(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model1', help="restore checkpoint")
-    parser.add_argument('--model2', help="restore checkpoint")
-    parser.add_argument('--model3', help="restore checkpoint")
-    parser.add_argument('--model4', help="restore checkpoint")
+    parser.add_argument('--model', help="restore checkpoint")
     parser.add_argument('--path', help="dataset for evaluation")
     parser.add_argument('--small', action='store_true', help='use small model')
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')

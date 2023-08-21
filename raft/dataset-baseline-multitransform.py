@@ -1,3 +1,7 @@
+"""
+python dataset-baseline-multitransform.py --model /home/panding/code/UR/UR/raft/checkpoints/2.pth --path /home/panding/code/UR/piv-data/ur
+"""
+
 import sys
 sys.path.append('core')
 
@@ -87,31 +91,12 @@ def load_flow_to_numpy(path):
 
 def dataload(args):
     print('model loading...')
-    model1 = torch.nn.DataParallel(RAFT(args))
-    model2 = torch.nn.DataParallel(RAFT(args))
-    model3 = torch.nn.DataParallel(RAFT(args))
-    model4 = torch.nn.DataParallel(RAFT(args))
+    model = torch.nn.DataParallel(RAFT(args))
+    model.load_state_dict(torch.load(args.model))
+    model = model.module
+    model.to(DEVICE)
+    model.eval()
 
-    model1.load_state_dict(torch.load(args.model1))
-    model2.load_state_dict(torch.load(args.model2))
-    model3.load_state_dict(torch.load(args.model3))
-    model4.load_state_dict(torch.load(args.model4))
-
-    model1 = model1.module
-    model2 = model2.module
-    model3 = model3.module
-    model4 = model4.module
-
-    model1.to(DEVICE)
-    model2.to(DEVICE)
-    model3.to(DEVICE)
-    model4.to(DEVICE)
-
-    model1.eval()
-    model2.eval()
-    model3.eval()
-    model4.eval()
-    
     print('model has been loaded!')
 
     data_path = '/home/panding/code/UR/piv-data/ur'
@@ -154,33 +139,71 @@ def dataload(args):
             padder = InputPadder(image1_rgb_tensor.shape)
             image1, image2 = padder.pad(image1_rgb_tensor, image2_rgb_tensor)
             
+            image1_array = image1.cpu().numpy()
+            image2_array = image2.cpu().numpy()
+            # np.save('/home/panding/code/UR/test/image1_array.npy', image1_array)
+            # np.save('/home/panding/code/UR/test/image2_array.npy', image2_array)
+            # 3*w*h
+            image1_array = np.squeeze(image1_array, 0)
+            image2_array = np.squeeze(image2_array, 0)
+            
+            # 垂直方向
+            image1_array_v = np.flip(image1_array, 1)
+            image2_array_v = np.flip(image2_array, 1)
+            image1_array_v = np.expand_dims(image1_array_v, 0)
+            image2_array_v = np.expand_dims(image2_array_v, 0)
+            # np.save('/home/panding/code/UR/test/image1_array_v.npy', image1_array_v.copy())
+            # np.save('/home/panding/code/UR/test/image2_array_v.npy', image2_array_v.copy())
+            image1_v = torch.from_numpy(image1_array_v.copy()).to(DEVICE)
+            image2_v = torch.from_numpy(image2_array_v.copy()).to(DEVICE)
+            
+            # 水平方向
+            image1_array_h = np.flip(image1_array, 2)
+            image2_array_h = np.flip(image2_array, 2)
+            image1_array_h = np.expand_dims(image1_array_h, 0)
+            image2_array_h = np.expand_dims(image2_array_h, 0)
+            # np.save('/home/panding/code/UR/test/image1_array_h.npy', image1_array_h.copy())
+            # np.save('/home/panding/code/UR/test/image2_array_h.npy', image2_array_h.copy())
+            image1_h = torch.from_numpy(image1_array_h.copy()).to(DEVICE)
+            image2_h = torch.from_numpy(image2_array_h.copy()).to(DEVICE)
+            
+            # 两个方向
+            image1_array_w = np.flip(image1_array, 1)
+            image2_array_w = np.flip(image2_array, 1)
+            image1_array_w = np.flip(image1_array_w, 2)
+            image2_array_w = np.flip(image2_array_w, 2)
+            image1_array_w = np.expand_dims(image1_array_w, 0)
+            image2_array_w = np.expand_dims(image2_array_w, 0)
+            # np.save('/home/panding/code/UR/test/image1_array_w.npy', image1_array_w.copy())
+            # np.save('/home/panding/code/UR/test/image2_array_w.npy', image2_array_w.copy())
+            image1_w = torch.from_numpy(image1_array_w.copy()).to(DEVICE)
+            image2_w = torch.from_numpy(image2_array_w.copy()).to(DEVICE)
+
             # torch.Size([1, 2, 440, 1024])
-            flow_low_1, flow_up_1 = model1(image1, image2, iters=20, test_mode=True)
-            flow_low_2, flow_up_2 = model2(image1, image2, iters=20, test_mode=True)
-            flow_low_3, flow_up_3 = model3(image1, image2, iters=20, test_mode=True)
-            flow_low_4, flow_up_4 = model4(image1, image2, iters=20, test_mode=True)
+            flow_low_1, flow_up_1 = model(image1, image2, iters=20, test_mode=True)
+            flow_low_2, flow_up_2 = model(image1_v, image2_v, iters=20, test_mode=True)
+            flow_low_3, flow_up_3 = model(image1_h, image2_h, iters=20, test_mode=True)
+            flow_low_4, flow_up_4 = model(image1_w, image2_w, iters=20, test_mode=True)
+            
             # viz(flow_up)
             # torch.Size([2, 440, 1024])
             flow_up_1 = torch.squeeze(flow_up_1)
             flow_up_2 = torch.squeeze(flow_up_2)
             flow_up_3 = torch.squeeze(flow_up_3)
             flow_up_4 = torch.squeeze(flow_up_4)
-
-            flow_up_1_u, flow_up_1_v = flow_up_1.split(1, 0)
-            flow_up_2_u, flow_up_2_v = flow_up_2.split(1, 0)
-            flow_up_3_u, flow_up_3_v = flow_up_3.split(1, 0)
-            flow_up_4_u, flow_up_4_v = flow_up_4.split(1, 0)
             
             flow_truth = load_flow_to_numpy(flow).to(DEVICE)
-
+            # print(flow_up_4.shape)
+            # print(flow_truth.shape)
             """
             torch.Size([6, 440, 1024])
             六通道分别为 灰度后的i1, 灰度后的i2, u, v, u_t, v_t
             """
-            result = torch.cat((flow_up_1_u, flow_up_1_v, flow_up_2_u, flow_up_2_v,flow_up_3_u, flow_up_3_v,flow_up_4_u, flow_up_4_v, flow_truth), 0)
+            # result = torch.cat((flow_up_1_u, flow_up_1_v), 0)
+            result = torch.cat((flow_up_1, flow_up_2, flow_up_3, flow_up_4, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
-            save_path = imfile1[0:31] + 'baseline-multimodel' + imfile1[33:-9]
+            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[33:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
             # data_path = imfile1[0:20] + imfile1[:-9]
             print(f"当前存储位置为: {save_path}")
@@ -192,10 +215,7 @@ def dataload(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model1', help="restore checkpoint")
-    parser.add_argument('--model2', help="restore checkpoint")
-    parser.add_argument('--model3', help="restore checkpoint")
-    parser.add_argument('--model4', help="restore checkpoint")
+    parser.add_argument('--model', help="restore checkpoint")
     parser.add_argument('--path', help="dataset for evaluation")
     parser.add_argument('--small', action='store_true', help='use small model')
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')

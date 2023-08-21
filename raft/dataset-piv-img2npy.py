@@ -49,7 +49,7 @@ def load_image(imfile):
     img_rgb[:, :, 0] = img
     img_rgb[:, :, 1] = img
     img_rgb[:, :, 2] = img
-    cv2.imwrite('/home/panding/code/UR/UR/raft/rgb.png', img_rgb)
+    # cv2.imwrite('/home/panding/code/UR/UR/raft/rgb.png', img_rgb)
     img_rgb = torch.from_numpy(img_rgb).permute(2, 0, 1).float()
     return img_rgb[None].to(DEVICE)
 
