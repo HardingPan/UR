@@ -39,7 +39,7 @@ class up_conv(nn.Module):
         return x
     
 class UNet(nn.Module):
-    def __init__(self, in_channels=4, out_channels=1):
+    def __init__(self, in_channels=4, out_channels=2):
         super(UNet, self).__init__()
 
         # Down sampling
@@ -80,7 +80,7 @@ class UNet(nn.Module):
         return x
 
 def remap(inputs, device):
-    inputs = inputs.cpu().numpy()
+    # inputs = inputs.numpy()
     
     image0 = inputs[0]
     image1 = inputs[1]
@@ -96,32 +96,48 @@ def remap(inputs, device):
     
     return inputs.to(device)
 
-def ur(data, path, device):
+# def ur(data, path, device):
     
-    data = remap(data, device)
-    data = data.unsqueeze(0)
-    print("remaped!")
-    model = torch.load(path)
-    model = UNet(in_channels=4, out_channels=1)
-    model.load_state_dict(torch.load(path))
-    model.to(device)
-    print("model has loaded!")
-    sigma = model(data)
-    print("sigma has got!!")
+#     data = remap(data, device)
+#     data = data.unsqueeze(0)
+#     print("remaped!")
+#     model = torch.load(path)
+#     model = UNet(in_channels=4, out_channels=1)
+#     model.load_state_dict(torch.load(path))
+#     model.to(device)
+#     print("model has loaded!")
+#     sigma = model(data)
+#     print("sigma has got!!")
     
-    return sigma.squeeze(0, 1)
+#     return sigma.squeeze(0, 1)
 
+class Ur():
+    def __init__(self, data, path, device):
+        self.data = remap(data, device)
+        self.data = self.data.unsqueeze(0)
+        model = torch.load(path)
+        model = UNet(in_channels=4, out_channels=2)
+        model.load_state_dict(torch.load(path))
+        model.to(device)
+        self.sigma = model(self.data)
+        
+        self.sigma = self.sigma.squeeze(0).detach().cpu().numpy()
+        self.sigma[1] = np.negative(self.sigma[1])
+        print('completed!')
+    def get_sigma(self):
+        return self.sigma
 
 if __name__ == '__main__':
     
     # 加载数据
-    data_path = '/home/panding/code/UR/data-chair/00839_img2.npy'
+    data_path = '/home/panding/code/UR/piv-data/ur/backstep_Re800_00361.npy'
     data = np.load(data_path)
     data = data[:4]
-    data_tensor = torch.from_numpy(data)
+    # data_tensor = torch.from_numpy(data)
     
-    model_path = '/home/panding/code/UR/UR/model1.pt'
+    model_path = '/home/panding/code/UR/UR/ur-model/8-21-1.pt'
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    res = ur(data_tensor, model_path, my_device)
+    test = Ur(data, model_path, my_device)
+    sigma = test.get_sigma()
     

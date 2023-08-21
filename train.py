@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 import cv2 as cv
 import numpy as np
 import os
+import glob
 import matplotlib.pyplot as plt
 
 class double_conv(nn.Module):
@@ -80,7 +81,7 @@ class UNet(nn.Module):
         return x
     
 def custom_loss(sigma, v, v_t):
-    eps = 1e-8
+    eps = 1e-10
     sigma2 = sigma ** 2 + eps
     # print(f"sigam2.shape: {sigma2.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
     loss = torch.log(sigma2) + (v_t - v) ** 2 / sigma2
@@ -89,8 +90,12 @@ def custom_loss(sigma, v, v_t):
 class MyDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = data_path
-        self.data_files = sorted(os.listdir(self.data_path))
-
+        self.data_files = glob.glob(os.path.join(self.data_path, 'JHTDB*.npy'))
+        # self.data_files = sorted(self.data_path)
+        randomidx = np.random.permutation(len(self.data_files))
+        self.data_files = [self.data_files[i] for i in randomidx]
+        # print(self.data_files)
+        
     def __len__(self):
         return len(self.data_files)
 
@@ -101,7 +106,8 @@ class MyDataset(Dataset):
     """
     def __getitem__(self, index):
         # Load data from file
-        data = np.load(os.path.join(self.data_path, self.data_files[index]))
+        # data = np.load(os.path.join(self.data_path, self.data_files[index]))
+        data = np.load(self.data_files[index])
         # data = data[0:4]
         # Convert to tensor
         data = torch.from_numpy(data).float()
@@ -135,7 +141,7 @@ def remap(inputs, device):
     inputs_new = torch.from_numpy(inputs_new)
 
     return inputs_new.to(device)
-        
+
 def train(model, optimizer, data_loader, num_epochs, device):
     model.to(device)
 
@@ -184,22 +190,30 @@ def train(model, optimizer, data_loader, num_epochs, device):
         plt.savefig('loss.png')    
         torch.save(model.state_dict(), 'model.pt')
 
+    plt.plot(losses)
+    plt.xlabel('Epoch')
+    plt.ylabel('loss')
+    plt.yscale('log')
+    plt.title('Training Loss')
+    plt.savefig('loss.png')    
+    torch.save(model.state_dict(), 'model.pt')
+    
 """
 ------------------------------训练部分------------------------------
 """
 # 加载数据
-data_path = '/home/panding/code/UR/data-chair'
-batch_size = 2
+data_path = '/home/panding/code/UR/piv-data/ur'
+batch_size = 30
 
 my_data_loader = load_data(data_path, batch_size)
 
 # 初始化模型、优化器和设备
-net = UNet(in_channels=4, out_channels=1)
-Adam_optimizer = optim.Adam(net.parameters(), lr=0.01)
+net = UNet(in_channels=4, out_channels=2)
+Adam_optimizer = optim.Adam(net.parameters(), lr=0.005)
 my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 训练循环
-my_num_epochs = 100
+my_num_epochs = 120
 
 if __name__ == '__main__':
     train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)
