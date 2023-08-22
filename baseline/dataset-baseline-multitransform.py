@@ -1,3 +1,6 @@
+"""
+python dataset-baseline-multitransform.py --model /home/panding/code/UR/UR/raft/checkpoints/2.pth --path /home/panding/code/UR/piv-data/test
+"""
 import sys
 sys.path.append('core')
 
@@ -162,7 +165,7 @@ def dataload(args):
             # result = torch.cat((flow_up_1_u, flow_up_1_v, flow_up_2_u, flow_up_2_v,flow_up_3_u, flow_up_3_v,flow_up_4_u, flow_up_4_v, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
-            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[33:-9]
+            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[35:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
             # data_path = imfile1[0:20] + imfile1[:-9]
             print(f"当前存储位置为: {save_path}")

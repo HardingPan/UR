@@ -203,7 +203,7 @@ def dataload(args):
             result = torch.cat((flow_up_1, flow_up_2, flow_up_3, flow_up_4, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
-            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[33:-9]
+            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[35:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
             # data_path = imfile1[0:20] + imfile1[:-9]
             print(f"当前存储位置为: {save_path}")

@@ -57,8 +57,9 @@ class UNet(nn.Module):
         self.up_conv3 = up_conv(128, 64)
         self.conv7 = double_conv(128, 64)
 
-        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
-
+        self.final_conv_1 = nn.Conv2d(64, out_channels, kernel_size=1)
+        self.final_conv_2 = nn.Conv2d(64, out_channels, kernel_size=1)
+        
     def forward(self, x):
         # Down sampling
         x1 = self.conv1(x)
@@ -77,20 +78,27 @@ class UNet(nn.Module):
         x = torch.cat([x1, x], dim=1)
         x = self.conv7(x)
 
-        x = self.final_conv(x)
-        return x
+        sigma_u = self.final_conv_1(x)
+        sigma_v = self.final_conv_2(x)
+        
+        return sigma_u, sigma_v
     
-def custom_loss(sigma, v, v_t):
-    eps = 1e-10
-    sigma2 = sigma ** 2 + eps
-    # print(f"sigam2.shape: {sigma2.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
-    loss = torch.log(sigma2) + (v_t - v) ** 2 / sigma2
+def custom_loss(sigma, v, v_t, device):
+    
+    v = v.unsqueeze(1)
+    v_t = v_t.unsqueeze(1)
+    
+    eps = torch.full((len(sigma), 1, 256, 256), 1e-10).to(device)
+    sigma2 = torch.square(sigma) + eps
+    print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
+    loss = torch.log(sigma2) + torch.square(v_t - v) / sigma2
+
     return loss.mean()
 
 class MyDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = data_path
-        self.data_files = glob.glob(os.path.join(self.data_path, 'JHTDB*.npy'))
+        self.data_files = glob.glob(os.path.join(self.data_path, '*.npy'))
         # self.data_files = sorted(self.data_path)
         randomidx = np.random.permutation(len(self.data_files))
         self.data_files = [self.data_files[i] for i in randomidx]
@@ -143,8 +151,8 @@ def remap(inputs, device):
     return inputs_new.to(device)
 
 def train(model, optimizer, data_loader, num_epochs, device):
+    
     model.to(device)
-
     losses = []
     
     for epoch in range(num_epochs):
@@ -156,16 +164,19 @@ def train(model, optimizer, data_loader, num_epochs, device):
             batch = batch.to(device)
 
             inputs = batch[:, :4, :, :]
-            remap(inputs, device)
-            v = batch[:, 2:4, :, :]
-            v_t = batch[:, 4:6, :, :]
+
+            v_u = batch[:, 2, :, :]
+            v_v = batch[:, 3, :, :]
+            v_t_u = batch[:, 4, :, :]
+            v_t_v = batch[:, 5, :, :]
+            
             inputs = remap(inputs, device)
             # 将梯度清零
             optimizer.zero_grad()
             # 前向传递
-            sigma = model(inputs)
+            sigma_u, sigma_v = model(inputs)
             # 计算损失和评估指标
-            loss = custom_loss(sigma, v, v_t)
+            loss = custom_loss(sigma_u, v_u, v_t_u, device)
             metric = -loss.item()
             # 反向传播和优化
             loss.backward()
@@ -188,6 +199,12 @@ def train(model, optimizer, data_loader, num_epochs, device):
         plt.yscale('log')
         plt.title('Training Loss')
         plt.savefig('loss.png')    
+        if epoch == 5:
+            torch.save(model.state_dict(), 'model-5.pt')
+        elif epoch == 10:
+            torch.save(model.state_dict(), 'model-10.pt')
+        elif epoch == 15:
+            torch.save(model.state_dict(), 'model-15.pt')
         torch.save(model.state_dict(), 'model.pt')
 
     plt.plot(losses)
@@ -198,22 +215,20 @@ def train(model, optimizer, data_loader, num_epochs, device):
     plt.savefig('loss.png')    
     torch.save(model.state_dict(), 'model.pt')
     
-"""
-------------------------------训练部分------------------------------
-"""
+################################################################
 # 加载数据
-data_path = '/home/panding/code/UR/piv-data/ur'
-batch_size = 30
+data_path = '/home/panding/code/UR/piv-data/raft-piv'
+batch_size = 2
 
 my_data_loader = load_data(data_path, batch_size)
 
 # 初始化模型、优化器和设备
-net = UNet(in_channels=4, out_channels=2)
+net = UNet(in_channels=4, out_channels=1)
 Adam_optimizer = optim.Adam(net.parameters(), lr=0.005)
 my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 训练循环
-my_num_epochs = 120
+my_num_epochs = 100
 
 if __name__ == '__main__':
     train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)

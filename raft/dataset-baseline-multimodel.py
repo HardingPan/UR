@@ -1,7 +1,7 @@
 """
 baseline对比方案一(使用多个训练的raft模型的结果值计算不确定度)的dataset代码。dataset指令示例如下:
 ```zsh
-python dataset-baseline-multimodel.py --model1 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-1.pth --model2 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-2.pth --model3 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-3.pth --model4 /home/panding/code/UR/UR/raft/checkpoints/model-8-14-4.pth --path /home/panding/code/UR/piv-data/ur
+python dataset-baseline-multimodel.py --model1 /home/panding/code/UR/UR/raft/checkpoints/1.pth --model2 /home/panding/code/UR/UR/raft/checkpoints/2.pth --model3 /home/panding/code/UR/UR/raft/checkpoints/3.pth --model4 /home/panding/code/UR/UR/raft/checkpoints/4.pth --path /home/panding/code/UR/piv-data/test
 """
 import sys
 sys.path.append('core')
@@ -185,7 +185,7 @@ def dataload(args):
             result = torch.cat((flow_up_1_u, flow_up_1_v, flow_up_2_u, flow_up_2_v,flow_up_3_u, flow_up_3_v,flow_up_4_u, flow_up_4_v, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
-            save_path = imfile1[0:31] + 'baseline-multimodel' + imfile1[33:-9]
+            save_path = imfile1[0:31] + 'baseline-multimodel' + imfile1[35:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
             # data_path = imfile1[0:20] + imfile1[:-9]
             print(f"当前存储位置为: {save_path}")
