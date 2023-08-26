@@ -166,6 +166,9 @@ class Piv(FlowDataset):
         super(Piv, self).__init__(aug_params)
         
         # 加载piv数据集中的tif和flo数据
+        # images1 = sorted(glob(osp.join(root, '*_img1.tif')))
+        # images2 = sorted(glob(osp.join(root, '*_img2.tif')))
+        # flows = sorted(glob(osp.join(root, '*.flo')))
         images1 = sorted(glob(osp.join(root, '*_img1.tif')))
         images2 = sorted(glob(osp.join(root, '*_img2.tif')))
         flows = sorted(glob(osp.join(root, '*.flo')))

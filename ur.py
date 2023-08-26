@@ -157,6 +157,7 @@ class UNet(nn.Module):
         
     def forward(self, x):
         # Down sampling
+        x = F.normalize(x, dim=1)
         x1 = self.conv1(x)
         x2 = self.conv2(F.max_pool2d(x1, 2))
         x3 = self.conv3(F.max_pool2d(x2, 2))
@@ -195,6 +196,9 @@ class UNet(nn.Module):
 
         sigma_u = self.final_conv_1(sigma_u)
         sigma_v = self.final_conv_2(sigma_v)
+        
+        # sigma_u = torch.clip(sigma_u, 0.0, 3.0)
+        # sigma_v = torch.clip(sigma_v, 0.0, 3.0)
         
         return sigma_u, sigma_v
 

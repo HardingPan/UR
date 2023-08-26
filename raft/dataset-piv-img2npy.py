@@ -133,7 +133,7 @@ def dataload(args):
     # model.eval()
 
 
-    data_path = '/home/panding/code/UR/piv-data/ur'
+    data_path = '/home/panding/code/UR/piv-class/uniform/ur'
     
     with torch.no_grad():
         # 读取路径内的成对图像和flow真值

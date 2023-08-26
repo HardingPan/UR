@@ -1,5 +1,5 @@
 """
-python dataset-baseline-multitransform.py --model /home/panding/code/UR/UR/raft/checkpoints/2.pth --path /home/panding/code/UR/piv-data/ur
+python dataset-baseline-multitransform.py --model /home/panding/code/UR/UR/raft/checkpoints/2.pth --path /home/panding/code/UR/piv-data/test
 """
 
 import sys
@@ -99,7 +99,7 @@ def dataload(args):
 
     print('model has been loaded!')
 
-    data_path = '/home/panding/code/UR/piv-data/ur'
+    # data_path = '/home/panding/code/UR/piv-data/ur'
     
     with torch.no_grad():
         # 读取路径内的成对图像和flow真值
@@ -112,6 +112,7 @@ def dataload(args):
                  glob.glob(os.path.join(args.path, '*.jpg')) + \
                  glob.glob(os.path.join(args.path, '*.ppm')) + \
                  glob.glob(os.path.join(args.path, '*_img2.tif'))
+
         flow_truth = glob.glob(os.path.join(args.path, '*.flo'))
         
         images1 = sorted(images1)
@@ -203,10 +204,10 @@ def dataload(args):
             result = torch.cat((flow_up_1, flow_up_2, flow_up_3, flow_up_4, flow_truth), 0)
             result = result.cpu()
             result_np = result.numpy()
-            save_path = imfile1[0:31] + 'baseline-multitransform' + imfile1[35:-9]
+            save_path = '/home/panding/code/UR/piv-data/baseline-multitransform' + imfile1[35:-9]
             # data_path = data_path + '/' + imfile1[6:-4]
             # data_path = imfile1[0:20] + imfile1[:-9]
-            print(f"当前存储位置为: {save_path}")
+            # print(f"当前存储位置为: {save_path}")
 
             np.save(save_path, result_np)
             # data_path = '/home/panding/code/UR/data-chair'
