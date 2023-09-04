@@ -133,7 +133,7 @@ def dataload(args):
     # model.eval()
 
 
-    data_path = '/home/panding/code/UR/piv-class/uniform/ur'
+    data_path = '/home/panding/code/UR/piv-class/backstep/backstep'
     
     with torch.no_grad():
         # 读取路径内的成对图像和flow真值
@@ -206,8 +206,9 @@ def dataload(args):
             result_np = result.numpy()
             # data_path = data_path + '/' + imfile1[6:-4]
             data_path = imfile1[:-9]
+            # print(data_path)
             np.save(data_path, result_np)
-            # data_path = '/home/panding/code/UR/data-chair'
+
             if images_loading_num % 5 == 0:
                 print('\n', '--------------images loaded: ', images_loading_num, ' / ', images_num, '-------------', '\n')
 

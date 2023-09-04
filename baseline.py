@@ -28,10 +28,10 @@ class MultiMethod():
 
         self.u_avg = np.mean(self.data_u, axis=0)
         self.v_avg = np.mean(self.data_v, axis=0)
-        
+        # 残差
         self.u_res = np.abs(np.repeat(self.u_avg[np.newaxis, :, :], 4, 0) - self.data_u)
         self.v_res = np.abs(np.repeat(self.v_avg[np.newaxis, :, :], 4, 0) - self.data_v)
-        
+    
     def std(self, show):
         sigma_u = np.sqrt(
             (np.square(self.u_res[0]) + np.square(self.u_res[1]) + np.square(self.u_res[2]) + np.square(self.u_res[3])) / 3
@@ -63,11 +63,11 @@ class MultiMethod():
         v_res_truth = np.abs(np.repeat(self.v_t[np.newaxis, :, :], 4, 0) - self.data_v)
         
         sigma_u_truth = np.sqrt(
-            (np.square(u_res_truth[0]) + np.square(u_res_truth[1]) + np.square(u_res_truth[2]) + np.square(u_res_truth[3])) / 3
+            (np.square(u_res_truth[0]) + np.square(u_res_truth[1]) + np.square(u_res_truth[2]) + np.square(u_res_truth[3])) / 4
         )
         
         sigma_v_truth = np.sqrt(
-            (np.square(v_res_truth[0]) + np.square(v_res_truth[1]) + np.square(v_res_truth[2]) + np.square(v_res_truth[3])) / 3
+            (np.square(v_res_truth[0]) + np.square(v_res_truth[1]) + np.square(v_res_truth[2]) + np.square(v_res_truth[3])) / 4
         )
         
         if show == 1:
@@ -87,6 +87,61 @@ class MultiMethod():
             plt.colorbar(fraction=0.05)
             
         return sigma_u_truth, sigma_v_truth
+    
+    def avg_std(self, show=0):
+        sigma_u_avg, sigma_v_avg = self.std(show=0)
+        sigma_u_avg = sigma_u_avg / 2
+        sigma_v_avg = sigma_v_avg / 2
+        
+        if show == 1:
+            plt.figure(figsize=(12,8))
+            plt.subplot(1, 2, 1)
+            plt.title('sigma_u_avg')
+            plt.xticks([])
+            plt.yticks([])
+            plt.imshow(sigma_u_avg)
+            plt.colorbar(fraction=0.05)
+            
+            plt.subplot(1, 2, 2)
+            plt.title('sigma_v_avg')
+            plt.xticks([])
+            plt.yticks([])
+            plt.imshow(sigma_v_avg)
+            plt.colorbar(fraction=0.05)
+        
+        return sigma_u_avg, sigma_v_avg
+    
+    def uncertainty(self, show=0):
+        
+        sigma_u = np.sqrt(
+            (np.square(self.data_u[0] - self.data_u[1]) + \
+             np.square(self.data_u[0] - self.data_u[2]) + \
+             np.square(self.data_u[0] - self.data_u[3])) / 2
+        )
+        
+        sigma_v = np.sqrt(
+            (np.square(self.data_v[0] - self.data_v[1]) + \
+             np.square(self.data_v[0] - self.data_v[2]) + \
+             np.square(self.data_v[0] - self.data_v[3])) / 2
+        )
+        
+        if show == 1:
+            plt.figure(figsize=(12,8))
+            plt.subplot(1, 2, 1)
+            plt.title('uncertainty_u')
+            plt.xticks([])
+            plt.yticks([])
+            plt.imshow(sigma_u)
+            plt.colorbar(fraction=0.05)
+            
+            plt.subplot(1, 2, 2)
+            plt.title('uncertainty_v')
+            plt.xticks([])
+            plt.yticks([])
+            plt.imshow(sigma_v)
+            plt.colorbar(fraction=0.05)
+            
+        return sigma_u, sigma_v
     
     def detransform(self):
         

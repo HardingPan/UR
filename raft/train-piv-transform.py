@@ -194,6 +194,8 @@ def train(args):
                     image1_array = np.flip(image1_array, 2)
                     image2_array = np.flip(image2_array, 2)
                     flow_array = np.flip(flow_array, 2)
+                    # print(flow_array.shape)
+                    flow_array[:, 0, :, :] = np.negative(flow_array[:, 0, :, :])
                     if total_steps == 1:
                         cv2.imwrite('/home/panding/code/UR/1_1.png', image1_array[0].transpose(1, 2, 0))
                         cv2.imwrite('/home/panding/code/UR/1_2.png', image2_array[0].transpose(1, 2, 0))
@@ -207,7 +209,8 @@ def train(args):
                     flow_array = flow.cpu().numpy()
                     image1_array = np.flip(image1_array, 3)
                     image2_array = np.flip(image2_array, 3)
-                    flow_array = np.flip(flow_array, 3)
+                    flow_array = np.negative(np.flip(flow_array, 3))
+                    flow_array[:, 1, :, :] = np.negative(flow_array[:, 1, :, :])
                     if total_steps == 2:
                         cv2.imwrite('/home/panding/code/UR/2_1.png', image1_array[0].transpose(1, 2, 0))
                         cv2.imwrite('/home/panding/code/UR/2_2.png', image2_array[0].transpose(1, 2, 0))
@@ -220,7 +223,9 @@ def train(args):
                     flow_array = flow.cpu().numpy()
                     image1_array = np.flip(np.flip(image1_array, 3), 2)
                     image2_array = np.flip(np.flip(image2_array, 3), 2)
-                    flow_array = np.flip(np.flip(flow_array, 3), 2)
+                    flow_array = np.negative(np.flip(np.flip(flow_array, 3), 2))
+                    flow_array[:, 0, :, :] = np.negative(flow_array[:, 0, :, :])
+                    flow_array[:, 1, :, :] = np.negative(flow_array[:, 1, :, :])
                     if total_steps == 3:
                         cv2.imwrite('/home/panding/code/UR/3_1.png', image1_array[0].transpose(1, 2, 0))
                         cv2.imwrite('/home/panding/code/UR/3_2.png', image2_array[0].transpose(1, 2, 0))
