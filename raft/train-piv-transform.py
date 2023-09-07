@@ -223,7 +223,7 @@ def train(args):
                     flow_array = flow.cpu().numpy()
                     image1_array = np.flip(np.flip(image1_array, 3), 2)
                     image2_array = np.flip(np.flip(image2_array, 3), 2)
-                    flow_array = np.negative(np.flip(np.flip(flow_array, 3), 2))
+                    flow_array =np.flip(np.flip(flow_array, 3), 2)
                     flow_array[:, 0, :, :] = np.negative(flow_array[:, 0, :, :])
                     flow_array[:, 1, :, :] = np.negative(flow_array[:, 1, :, :])
                     if total_steps == 3:

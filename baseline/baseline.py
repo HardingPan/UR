@@ -116,13 +116,13 @@ class MultiMethod():
         sigma_u = np.sqrt(
             (np.square(self.data_u[0] - self.data_u[1]) + \
              np.square(self.data_u[0] - self.data_u[2]) + \
-             np.square(self.data_u[0] - self.data_u[3])) / 2
+             np.square(self.data_u[0] - self.data_u[3])) / 3
         )
         
         sigma_v = np.sqrt(
             (np.square(self.data_v[0] - self.data_v[1]) + \
              np.square(self.data_v[0] - self.data_v[2]) + \
-             np.square(self.data_v[0] - self.data_v[3])) / 2
+             np.square(self.data_v[0] - self.data_v[3])) / 3
         )
         
         if show == 1:
@@ -148,10 +148,25 @@ class MultiMethod():
         self.data[2] = np.flip(self.data[2], 0)
         self.data[3] = np.negative(np.flip(self.data[3], 0))
 
-        self.data[4] = np.negative(np.flip(self.data[4], 1))
-        self.data[5] = np.flip(self.data[5], 1)
-        self.data[6] = np.negative(np.flip(np.flip(self.data[6], 1), 0))
-        self.data[7] = np.negative(np.flip(np.flip(self.data[7], 1), 0))
+        self.data[4] = np.negative(np.rot90(self.data[4], k=-2, axes=(0, 1)))
+        self.data[5] = np.negative(np.rot90(self.data[5], k=-2, axes=(0, 1)))
+        
+        # self.data[6, 7] = self.data[7, 6]
+        # self.data[6] = np.negative(self.data[6])
+        # self.data[7] = np.negative(self.data[7])
+        
+        # self.data[6] = np.transpose(self.data[6], (0, 2, 1))
+        # self.data[7] = np.transpose(self.data[7], (0, 2, 1))
+        # self.data[6] = np.rot90(self.data[6], k=1, axes=(0, 1))
+        # self.data[7] = np.rot90(self.data[7], k=1, axes=(0, 1))
+        
+        # self.data[4] = np.flip(np.negative(self.data[4]), 1)
+        # self.data[4] = np.negative(np.flip(self.data[4], 1))
+        # self.data[5] = np.flip(self.data[5], 1)
+        
+        # self.data[6] = np.negative(np.flip(np.flip(self.data[6], 1), 0))
+        # self.data[7] = np.negative(np.flip(np.flip(self.data[7], 1), 0))
+
         pass
     
     def get_data(self):

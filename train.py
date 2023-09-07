@@ -135,31 +135,29 @@ class UNet(nn.Module):
         
         return sigma_u, sigma_v
 
-def custom_loss(sigma, v, v_t, device):
-    
-    v = v.unsqueeze(1)
-    v_t = v_t.unsqueeze(1)
-    
-    eps = torch.full((len(sigma), 1, 256, 256), 1e-10).to(device)
-    sigma2 = torch.square(sigma) + eps
-    # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
-    loss = torch.log(sigma2) + torch.square(v_t - v) / sigma2
-    
-    loss = torch.exp(torch.negative(loss))
-    
-    return loss.mean()
-
 # def custom_loss(sigma, v, v_t, device):
-#     sigma = sigma.squeeze(1)
-#     eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
+    
+#     v = v.unsqueeze(1)
+#     v_t = v_t.unsqueeze(1)
+    
+#     eps = torch.full((len(sigma), 1, 256, 256), 1e-10).to(device)
 #     sigma2 = torch.square(sigma) + eps
-#     loss_fn = nn.MSELoss()
-#     sigma2_t = 3 * torch.abs(v - v_t)
-#     loss = loss_fn(sigma2, sigma2_t)
-#     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
+#     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
+#     loss = torch.log(sigma2) + torch.square(v_t - v) / sigma2
+
+#     return loss.mean()
+
+def custom_loss(sigma, v, v_t, device):
+    sigma = sigma.squeeze(1)
+    eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
+    # sigma2 = torch.square(sigma) + eps
+    sigma = 3 * torch.abs(sigma) + eps
+    loss_fn = nn.MSELoss()
+    sigma_t = torch.abs(v - v_t)
+    loss = loss_fn(sigma, sigma_t)
+    # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
     
-#     return loss
-    
+    return loss
     
 class MyDataset(Dataset):
     def __init__(self, data_path):
@@ -275,7 +273,7 @@ def train(model, optimizer, data_loader, num_epochs, device):
         losses_u.append(avg_metric_u)
         losses_v.append(avg_metric_v)
         # 打印训练进度
-        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.4f}, Metric_u={avg_metric_u:.4f}, Metric_v={avg_metric_v:.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
 
         plt.plot(losses, color='green', label='total loss')
         plt.plot(losses_u, color='red', label='loss of sigma_u')
@@ -303,8 +301,8 @@ def train(model, optimizer, data_loader, num_epochs, device):
 if __name__ == '__main__':
     
     # 加载数据
-    data_path = '/home/panding/code/UR/piv-data/raft-piv'
-    batch_size = 10
+    data_path = '/home/panding/code/UR/piv-class/backsetp/backstep'
+    batch_size = 6
 
     my_data_loader = load_data(data_path, batch_size)
 
@@ -314,6 +312,6 @@ if __name__ == '__main__':
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 训练循环
-    my_num_epochs = 100
+    my_num_epochs = 500
     
     train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)
