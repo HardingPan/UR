@@ -1,5 +1,5 @@
 """
-python truth.py --model /home/panding/code/UR/UR/raft/checkpoints/2.pth --path /home/panding/code/UR/piv-data/test
+python truth.py --model /home/panding/code/UR/UR/raft/checkpoints/best-1.pth --path /home/panding/code/UR/piv-data/test
 生成的npy文件内容为
 flow_up: 计算得到的flow, 2*w*h, 分别为u和v
 flow_truth: flow真值, 2*w*h, 分别为u_t和v_t

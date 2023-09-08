@@ -113,26 +113,21 @@ def rotate_right_90(arr):
     
     return arr
 
-def flip(arr):
+def flip_0(arr):
     
     arr = np.squeeze(arr, 0)
+    # print(arr.shape)
     arr = np.flip(arr, 1)
-    arr = np.expand_dims(arr, 0)
+    arr = np.expand_dims(arr, 0)  
     
     return arr
 
-def transpose(arr):
-    arr = np.squeeze(arr, 0)
-    arr = np.transpose(arr, (0, 2, 1))
-    arr = np.expand_dims(arr, 0)
+def flip_1(arr):
     
-    return arr
-
-def reverse(arr):
     arr = np.squeeze(arr, 0)
-    arr = 255.0 - arr
-    # print(arr)
-    arr = np.expand_dims(arr, 0)
+    # print(arr.shape)
+    arr = np.flip(arr, 2)
+    arr = np.expand_dims(arr, 0)  
     
     return arr
 
@@ -197,11 +192,14 @@ def dataload(args):
             
             # 此时的shape为(b*3*w*h)
             
-            image1_flip = torch.from_numpy(flip(image1_array).copy()).to(DEVICE)
-            image2_flip = torch.from_numpy(flip(image2_array).copy()).to(DEVICE)
+            image1_flip_0 = torch.from_numpy(flip_0(image1_array).copy()).to(DEVICE)
+            image2_flip_0 = torch.from_numpy(flip_0(image2_array).copy()).to(DEVICE)
             
             image1_rotate_180 = torch.from_numpy(rotate_180(image1_array).copy()).to(DEVICE)
             image2_rotate_180 = torch.from_numpy(rotate_180(image2_array).copy()).to(DEVICE)
+            
+            image1_flip_1 = torch.from_numpy(flip_1(image1_array).copy()).to(DEVICE)
+            image2_flip_1 = torch.from_numpy(flip_1(image2_array).copy()).to(DEVICE)
             
             # image1_rotate_right_90 = torch.from_numpy(reverse(image1_array).copy()).to(DEVICE)
             # image2_rotate_right_90 = torch.from_numpy(reverse(image2_array).copy()).to(DEVICE)
@@ -215,10 +213,9 @@ def dataload(args):
             # flow_up_2 = torch.negative(flow_up_2, 1)
             
             flow_low_1, flow_up_1 = model(image1, image2, iters=20, test_mode=True)
-            flow_low_2, flow_up_2 = model(image1_flip, image2_flip, iters=20, test_mode=True)
+            flow_low_2, flow_up_2 = model(image1_flip_0, image2_flip_0, iters=20, test_mode=True)
             flow_low_3, flow_up_3 = model(image1_rotate_180, image2_rotate_180, iters=20, test_mode=True)
-            # flow_low_4, flow_up_4 = model(image1_rotate_right_90, image2_rotate_right_90, iters=20, test_mode=True)
-            flow_low_4, flow_up_4 = model(image1, image2, iters=20, test_mode=True)
+            flow_low_4, flow_up_4 = model(image1_flip_1, image2_flip_1, iters=20, test_mode=True)
             
             # viz(flow_up)
             # torch.Size([2, 440, 1024])

@@ -147,11 +147,17 @@ class MultiMethod():
         
         self.data[2] = np.flip(self.data[2], 0)
         self.data[3] = np.negative(np.flip(self.data[3], 0))
+        
+        self.data[4] = np.rot90(np.negative(self.data[4]), k=2, axes=(0, 1))
+        self.data[5] = np.rot90(np.negative(self.data[5]), k=2, axes=(0, 1))
 
-        self.data[4] = np.negative(np.flip(self.data[4], 1))
-        self.data[5] = np.flip(self.data[5], 1)
-        self.data[6] = np.negative(np.flip(np.flip(self.data[6], 1), 0))
-        self.data[7] = np.negative(np.flip(np.flip(self.data[7], 1), 0))
+        self.data[6] = np.negative(np.flip(self.data[6], 1))
+        self.data[7] = np.flip(self.data[7], 1)
+
+        # self.data[4] = np.negative(np.flip(self.data[4], 1))
+        # self.data[5] = np.flip(self.data[5], 1)
+        # self.data[6] = np.negative(np.flip(np.flip(self.data[6], 1), 0))
+        # self.data[7] = np.negative(np.flip(np.flip(self.data[7], 1), 0))
         pass
     
     def get_data(self):

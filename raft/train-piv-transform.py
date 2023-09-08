@@ -139,6 +139,59 @@ class Logger:
     def close(self):
         self.writer.close()
 
+def flip_0(img1, img2, flow):
+
+    img1 = img1.cpu().numpy()
+    img2 = img2.cpu().numpy()
+    flow = flow.cpu().numpy()
+
+    img1 = np.flip(img1, 2)
+    img2 = np.flip(img2, 2)
+    flow = np.flip(flow, 2)
+
+    flow[:, 1, :, :] = np.negative(flow[:, 1, :, :])
+
+    img1 = torch.from_numpy(img1.copy())
+    img2 = torch.from_numpy(img2.copy())
+    flow = torch.from_numpy(flow.copy())
+
+    return img1, img2, flow
+
+def flip_1(img1, img2, flow):
+
+    img1 = img1.cpu().numpy()
+    img2 = img2.cpu().numpy()
+    flow = flow.cpu().numpy()
+
+    img1 = np.flip(img1, 3)
+    img2 = np.flip(img2, 3)
+    flow = np.flip(flow, 3)
+
+    flow[:, 0, :, :] = np.negative(flow[:, 0, :, :])
+
+    img1 = torch.from_numpy(img1.copy())
+    img2 = torch.from_numpy(img2.copy())
+    flow = torch.from_numpy(flow.copy())
+
+    return img1, img2, flow
+
+def rotate_180(img1, img2, flow):
+
+    img1 = img1.cpu().numpy()
+    img2 = img2.cpu().numpy()
+    flow = flow.cpu().numpy()
+    # print(flow.shape)
+    img1 = np.rot90(img1, k=2, axes=(2, 3))
+    img2 = np.rot90(img2, k=2, axes=(2, 3))
+    flow = np.rot90(flow, k=2, axes=(2, 3))
+    flow = np.negative(flow)
+    img1 = torch.from_numpy(img1.copy())
+    img2 = torch.from_numpy(img2.copy())
+    flow = torch.from_numpy(flow.copy())
+
+    return img1, img2, flow
+
+
 
 def train(args):
     # 加载网络模型
@@ -181,59 +234,39 @@ def train(args):
                 image1 = (image1 + stdv * torch.randn(*image1.shape).cuda()).clamp(0.0, 255.0)
                 image2 = (image2 + stdv * torch.randn(*image2.shape).cuda()).clamp(0.0, 255.0)
                 
-            for transform_idx in range(1, 4):
+            for transform_idx in range(1, 5):
                 
                 if transform_idx == 1:
+                    # 第一种transform: 不进行变换
+                    # print("transform 1")
                     image1 = image1
                     image2 = image2
+                    flow = flow
                     
                 elif transform_idx == 2:
-                    image1_array = image1.cpu().numpy()
-                    image2_array = image2.cpu().numpy()
-                    flow_array = flow.cpu().numpy()
-                    image1_array = np.flip(image1_array, 2)
-                    image2_array = np.flip(image2_array, 2)
-                    flow_array = np.flip(flow_array, 2)
-                    # print(flow_array.shape)
-                    flow_array[:, 0, :, :] = np.negative(flow_array[:, 0, :, :])
-                    if total_steps == 1:
-                        cv2.imwrite('/home/panding/code/UR/1_1.png', image1_array[0].transpose(1, 2, 0))
-                        cv2.imwrite('/home/panding/code/UR/1_2.png', image2_array[0].transpose(1, 2, 0))
-                    image1 = torch.from_numpy(image1_array.copy()).cuda()
-                    image1 = torch.from_numpy(image1_array.copy()).cuda()
-                    flow = torch.from_numpy(flow_array.copy()).cuda()
+                    # print("transform 2")
+                    # 第二种transform: 沿水平轴做flip操作
+                    image1, image2, flow = flip_0(image1, image2, flow)
+                    image1 = image1.cuda()
+                    image2 = image2.cuda()
+                    flow = flow.cuda()
                         
                 elif transform_idx == 3:
-                    image1_array = image1.cpu().numpy()
-                    image2_array = image2.cpu().numpy()
-                    flow_array = flow.cpu().numpy()
-                    image1_array = np.flip(image1_array, 3)
-                    image2_array = np.flip(image2_array, 3)
-                    flow_array = np.negative(np.flip(flow_array, 3))
-                    flow_array[:, 1, :, :] = np.negative(flow_array[:, 1, :, :])
-                    if total_steps == 2:
-                        cv2.imwrite('/home/panding/code/UR/2_1.png', image1_array[0].transpose(1, 2, 0))
-                        cv2.imwrite('/home/panding/code/UR/2_2.png', image2_array[0].transpose(1, 2, 0))
-                    image1 = torch.from_numpy(image1_array.copy()).cuda()
-                    image1 = torch.from_numpy(image1_array.copy()).cuda()
-                    flow = torch.from_numpy(flow_array.copy()).cuda()
-                else:
-                    image1_array = image1.cpu().numpy()
-                    image2_array = image2.cpu().numpy()
-                    flow_array = flow.cpu().numpy()
-                    image1_array = np.flip(np.flip(image1_array, 3), 2)
-                    image2_array = np.flip(np.flip(image2_array, 3), 2)
-                    flow_array =np.flip(np.flip(flow_array, 3), 2)
-                    flow_array[:, 0, :, :] = np.negative(flow_array[:, 0, :, :])
-                    flow_array[:, 1, :, :] = np.negative(flow_array[:, 1, :, :])
-                    if total_steps == 3:
-                        cv2.imwrite('/home/panding/code/UR/3_1.png', image1_array[0].transpose(1, 2, 0))
-                        cv2.imwrite('/home/panding/code/UR/3_2.png', image2_array[0].transpose(1, 2, 0))
-                    image1 = torch.from_numpy(image1_array.copy()).cuda()
-                    image1 = torch.from_numpy(image1_array.copy()).cuda()
-                    flow = torch.from_numpy(flow_array.copy()).cuda()
-                # print(total_steps)
-                # print(image1.shape)
+                    # print("transform 3")
+                    # 第二种transform: 沿水平轴做flip操作
+                    image1, image2, flow = rotate_180(image1, image2, flow)
+                    image1 = image1.cuda()
+                    image2 = image2.cuda()
+                    flow = flow.cuda()
+
+                elif transform_idx == 4:
+                    # print("transform 4")
+                    # 第二种transform: 沿水平轴做flip操作
+                    image1, image2, flow = flip_1(image1, image2, flow)
+                    image1 = image1.cuda()
+                    image2 = image2.cuda()
+                    flow = flow.cuda()
+
                 flow_predictions = model(image1, image2, iters=args.iters)            
 
                 loss, metrics = sequence_loss(flow_predictions, flow, valid, args.gamma)
@@ -270,13 +303,13 @@ def train(args):
                 total_steps += 1
 
                 if total_steps == args.num_steps:
-                    PATH = '/home/panding/code/UR/UR/raft/checkpoints/model-8-20.pth'
+                    PATH = '/home/panding/code/UR/UR/raft/checkpoints/transform1.pth'
                     torch.save(model.state_dict(), PATH)
                     should_keep_training = False
                     break
 
     logger.close()
-    PATH = '/home/panding/code/UR/UR/raft/checkpoints/model-8-20.pth'
+    PATH = '/home/panding/code/UR/UR/raft/checkpoints/transform1.pth'
     torch.save(model.state_dict(), PATH)
 
     return PATH
@@ -306,8 +339,8 @@ if __name__ == '__main__':
     parser.add_argument('--add_noise', action='store_true')
     args = parser.parse_args()
 
-    torch.manual_seed(1234)
-    np.random.seed(1234)
+    # torch.manual_seed(1234)
+    # np.random.seed(1234)
 
     if not os.path.isdir('checkpoints'):
         os.mkdir('checkpoints')

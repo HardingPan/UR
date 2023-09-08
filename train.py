@@ -301,8 +301,8 @@ def train(model, optimizer, data_loader, num_epochs, device):
 if __name__ == '__main__':
     
     # 加载数据
-    data_path = '/home/panding/code/UR/piv-class/backsetp/backstep'
-    batch_size = 6
+    data_path = '/home/panding/code/UR/piv-data/raft-piv'
+    batch_size = 2
 
     my_data_loader = load_data(data_path, batch_size)
 
