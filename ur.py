@@ -9,78 +9,6 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-"""
-class double_conv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(double_conv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        x = self.conv(x)
-        return x
-
-class up_conv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(up_conv, self).__init__()
-        self.up = nn.Sequential(
-            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        x = self.up(x)
-        return x
-    
-class UNet(nn.Module):
-    def __init__(self, in_channels=4, out_channels=2):
-        super(UNet, self).__init__()
-
-        # Down sampling
-        self.conv1 = double_conv(in_channels, 64)
-        self.conv2 = double_conv(64, 128)
-        self.conv3 = double_conv(128, 256)
-        self.conv4 = double_conv(256, 512)
-
-        # Up sampling
-        self.up_conv1 = up_conv(512, 256)
-        self.conv5 = double_conv(512, 256)
-        self.up_conv2 = up_conv(256, 128)
-        self.conv6 = double_conv(256, 128)
-        self.up_conv3 = up_conv(128, 64)
-        self.conv7 = double_conv(128, 64)
-
-        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
-
-    def forward(self, x):
-        # Down sampling
-        x1 = self.conv1(x)
-        x2 = self.conv2(F.max_pool2d(x1, 2))
-        x3 = self.conv3(F.max_pool2d(x2, 2))
-        x4 = self.conv4(F.max_pool2d(x3, 2))
-
-        # Up sampling
-        x = self.up_conv1(x4)
-        x = torch.cat([x3, x], dim=1)
-        x = self.conv5(x)
-        x = self.up_conv2(x)
-        x = torch.cat([x2, x], dim=1)
-        x = self.conv6(x)
-        x = self.up_conv3(x)
-        x = torch.cat([x1, x], dim=1)
-        x = self.conv7(x)
-
-        x = self.final_conv(x)
-        return x
-"""
-
 class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()
@@ -202,6 +130,56 @@ class UNet(nn.Module):
         
         return sigma_u, sigma_v
 
+class VAE(nn.Module):
+    def __init__(self, input_dim, latent_dim):
+        super(VAE, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(input_dim, 16, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Flatten()
+        )
+        self.fc_mu = nn.Linear(32 * (W // 4) * (H // 4), latent_dim)
+        self.fc_logvar = nn.Linear(32 * (W // 4) * (H // 4), latent_dim)
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 32 * (W // 4) * (H // 4)),
+            nn.Unflatten(1, (32, W // 4, H // 4)),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, output_dim, kernel_size=4, stride=2, padding=1),
+            nn.Sigmoid()
+        )
+
+    def encode(self, x):
+        x = self.encoder(x)
+        mu = self.fc_mu(x)
+        logvar = self.fc_logvar(x)
+        return mu, logvar
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        z = mu + eps * std
+        return z
+
+    def decode(self, z):
+        x_hat = self.decoder(z)
+        return x_hat
+
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        x_hat = self.decode(z)
+        return x_hat, mu, logvar
+   
+# 设置输入和输出的尺寸
+input_dim = 4
+output_dim = 2
+latent_dim = 100
+W = 256
+H = 256
 
 def remap(inputs, device):
     # inputs = inputs.numpy()
@@ -236,14 +214,19 @@ def remap(inputs, device):
 #     return sigma.squeeze(0, 1)
 
 class Ur():
-    def __init__(self, data, path, device):
+    def __init__(self, model, data, path, device):
         
         self.data = remap(data, device)
         self.data = self.data.unsqueeze(0)
         # print(self.data.shape)
         
-        model = torch.load(path)
-        model = UNet(in_channels=4, out_channels=1)
+        
+        if model == 'unet':
+            model = UNet(in_channels=4, out_channels=1)
+        elif model == 'vae':
+            model = VAE(input_dim, latent_dim)
+        else:
+            print("No this model!")
         model.load_state_dict(torch.load(path))
         model.to(device)
         
@@ -263,9 +246,9 @@ if __name__ == '__main__':
     data = data[:4]
     # data_tensor = torch.from_numpy(data)
     
-    model_path = '/home/panding/code/UR/UR/ur-model/8-21-1.pt'
+    model_path = '/home/panding/code/UR/UR/model.pt'
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    test = Ur(data, model_path, my_device)
+    test = Ur('unet', data, model_path, my_device)
     sigma = test.get_sigma()
     

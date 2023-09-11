@@ -10,6 +10,7 @@ import numpy as np
 import os
 import glob
 import matplotlib.pyplot as plt
+from torchvision.models import resnet18
 
 class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -135,6 +136,32 @@ class UNet(nn.Module):
         
         return sigma_u, sigma_v
 
+class ResNet(nn.Module):
+    def __init__(self):
+        super(ResNet, self).__init__()
+        self.base_model = resnet18(pretrained=True)
+        self.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=1, padding=1)
+        self.relu = nn.ReLU(inplace=True)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc1 = nn.Linear(512, 1)
+        self.fc2 = nn.Linear(512, 1)
+        
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.base_model.maxpool(x)
+        x = self.base_model.layer1(x)
+        x = self.base_model.layer2(x)
+        x = self.base_model.layer3(x)
+        x = self.base_model.layer4(x)
+        x = self.avgpool(x)
+        print(x.shape)
+        x = x.view(x.size(0), -1)
+        print(x.shape)
+        output1 = self.fc1(x)
+        output2 = self.fc2(x)
+        return output1, output2
+
 # def custom_loss(sigma, v, v_t, device):
     
 #     v = v.unsqueeze(1)
@@ -149,7 +176,9 @@ class UNet(nn.Module):
 
 def custom_loss(sigma, v, v_t, device):
     sigma = sigma.squeeze(1)
+    # print(sigma.shape)
     eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
+    # print(eps.shape)
     # sigma2 = torch.square(sigma) + eps
     sigma = 3 * torch.abs(sigma) + eps
     loss_fn = nn.MSELoss()
@@ -158,7 +187,22 @@ def custom_loss(sigma, v, v_t, device):
     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
     
     return loss
-    
+
+# def custom_loss(sigma, v, v_t, device):
+
+#     sigma = sigma.squeeze(1)
+#     eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
+#     sigma = 3 * torch.abs(sigma) + eps
+#     sigma_t = torch.abs(v - v_t)
+#     # print(f"sigam2.shape: {sigma.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}")
+#     mse = (sigma - sigma_t) ** 2
+#     temp = torch.full((len(sigma), 256, 256), 100.0).to(device)
+#     PIXEL_MAX = 255.0
+#     mse = torch.where(mse==0, temp, mse)
+#     loss = 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
+#     # print(loss.shape)
+#     return loss.mean()
+
 class MyDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = data_path
@@ -213,7 +257,7 @@ def remap(inputs, device):
     inputs_new = torch.from_numpy(inputs_new)
 
     return inputs_new.to(device)
-
+ 
 def train(model, optimizer, data_loader, num_epochs, device):
     
     model.to(device)
@@ -282,11 +326,10 @@ def train(model, optimizer, data_loader, num_epochs, device):
         plt.ylabel('loss')
         plt.yscale('log')
         plt.title('Training Loss')
-        plt.savefig('loss.png')    
+        plt.savefig('loss.png')   
         if epoch % 5 == 0:
             save_path = '/home/panding/code/UR/ur-model/model-'+str(epoch)+'.model.pt'
             torch.save(model.state_dict(), save_path)
-
     plt.plot(losses, color='green', label='total loss')
     plt.plot(losses_u, color='red', label='loss of sigma_u')
     plt.plot(losses_v, color='blue', label='loss of sigma_v')
@@ -294,20 +337,20 @@ def train(model, optimizer, data_loader, num_epochs, device):
     plt.ylabel('loss')
     plt.yscale('log')
     plt.title('Training Loss')
-    # plt.legend()
-    plt.savefig('loss.png')    
-    torch.save(model.state_dict(), 'model.pt')
+    plt.savefig('loss.png')   
+    torch.save(model.state_dict(), '/home/panding/code/UR/unet-model/model-new.pt')
     
 if __name__ == '__main__':
     
     # 加载数据
-    data_path = '/home/panding/code/UR/piv-data/raft-piv'
+    data_path = '/home/panding/code/UR/piv-data/ur'
     batch_size = 2
 
     my_data_loader = load_data(data_path, batch_size)
 
     # 初始化模型、优化器和设备
     net = UNet(in_channels=4, out_channels=1)
+    # net = ResNet()
     Adam_optimizer = optim.Adam(net.parameters(), lr=0.0005)
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
