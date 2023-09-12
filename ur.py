@@ -177,7 +177,7 @@ class VAE(nn.Module):
 # 设置输入和输出的尺寸
 input_dim = 4
 output_dim = 2
-latent_dim = 100
+latent_dim = 10
 W = 256
 H = 256
 
@@ -220,23 +220,44 @@ class Ur():
         self.data = self.data.unsqueeze(0)
         # print(self.data.shape)
         
+        self.model = model
         
         if model == 'unet':
+            
             model = UNet(in_channels=4, out_channels=1)
+            print('UNet has loaded')
+            model.load_state_dict(torch.load(path))
+            print('load_state_dict has comple')
+            
+            model = model.to(device)
+            self.sigma_u, self.sigma_v = model(self.data)
+            self.sigma_u = self.sigma_u.reshape(256, 256).cpu().detach().numpy()
+            self.sigma_v = self.sigma_v.reshape(256, 256).cpu().detach().numpy()
+            print('completed!')
+            
         elif model == 'vae':
+            
             model = VAE(input_dim, latent_dim)
+            print('VAE has loaded')
+            model.load_state_dict(torch.load(path))
+            print('load_state_dict has comple')
+            
+            model = model.to(device)
+            x_hat, mu, logvar = model(self.data)
+            # print(x_hat.shape)
+            self.sigma_u = x_hat[:, 0, :, :].reshape(256, 256)
+            self.sigma_v = x_hat[:, 1, :, :].reshape(256, 256)
+            self.sigma_u = self.sigma_u.cpu().detach().numpy()
+            self.sigma_v = self.sigma_v.cpu().detach().numpy()
+            print('completed!')
+            
         else:
             print("No this model!")
-        model.load_state_dict(torch.load(path))
-        model.to(device)
         
-        self.sigma_u, self.sigma_v = model(self.data)
-        
-        self.sigma_u = self.sigma_u.squeeze(0).cpu().detach().numpy()
-        self.sigma_v = self.sigma_v.squeeze(0).cpu().detach().numpy()
-        print('completed!')
     def get_sigma(self):
         return self.sigma_u, self.sigma_v
+    def get_sigma2show(self):
+        return self.sigma_u.reshape(256, 256, 1), self.sigma_v.reshape(256, 256, 1)
 
 if __name__ == '__main__':
     

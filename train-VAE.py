@@ -141,6 +141,11 @@ def train_vae(model, train_loader, num_epochs, learning_rate, device):
     # criterion = nn.MSELoss()  # 重构损失函数
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+    total_loss_show = []
+    recon_loss_1_show = []
+    recon_loss_2_show = []
+    kl_loss_show = []
+    
     for epoch in range(num_epochs):
         total_loss = 0.0
         for batch_idx, data in enumerate(train_loader):
@@ -175,24 +180,30 @@ def train_vae(model, train_loader, num_epochs, learning_rate, device):
             optimizer.step()
 
             total_loss += loss.item()
-        total_loss = total_loss / len(train_loader)
-        plt.plot(total_loss, color='green', label='total loss')
-        plt.plot(recon_loss_1, color='red', label='loss of sigma_u')
-        plt.plot(recon_loss_2, color='blue', label='loss of sigma_v')
-        plt.plot(kl_loss, color='yellow', label='loss of kl')
-        plt.xlabel('Epoch')
-        plt.ylabel('loss')
-        plt.yscale('log')
-        plt.title('Training Loss')
-        plt.savefig('VAE-loss.png')   
+            
+        recon_loss_1_show.append(recon_loss_1.item() / len(train_loader))
+        recon_loss_2_show.append(recon_loss_2.item() / len(train_loader))
+        kl_loss_show.append(kl_loss.item() / len(train_loader))
+        total_loss_show.append(total_loss / len(train_loader))
+        
+         
         print('Epoch [{}/{}], Total Loss: {:.8f}, recon_loss_1: {:.8f}, recon_loss_2: {:.8f}, kl_loss: {:.8f}'.format(epoch + 1, num_epochs, total_loss, recon_loss_1, recon_loss_2, kl_loss))
         if epoch % 5 == 0:
             save_path = '/home/panding/code/UR/VAE-model/VAE-'+str(epoch)+'.pt'
             torch.save(model.state_dict(), save_path)
-    plt.plot(total_loss, color='green', label='total loss')
-    plt.plot(recon_loss_1, color='red', label='loss of sigma_u')
-    plt.plot(recon_loss_2, color='blue', label='loss of sigma_v')
-    plt.plot(kl_loss, color='yellow', label='loss of kl')
+        plt.plot(total_loss_show, color='green', label='total loss')
+        plt.plot(recon_loss_1_show, color='red', label='loss of sigma_u')
+        plt.plot(recon_loss_2_show, color='blue', label='loss of sigma_v')
+        plt.plot(kl_loss_show, color='yellow', label='loss of kl')
+        plt.xlabel('Epoch')
+        plt.ylabel('loss')
+        plt.yscale('log')
+        plt.title('Training Loss')
+        plt.savefig('VAE-loss.png')
+    plt.plot(total_loss_show, color='green', label='total loss')
+    plt.plot(recon_loss_1_show, color='red', label='loss of sigma_u')
+    plt.plot(recon_loss_2_show, color='blue', label='loss of sigma_v')
+    plt.plot(kl_loss_show, color='yellow', label='loss of kl')
     plt.xlabel('Epoch')
     plt.ylabel('loss')
     plt.yscale('log')
@@ -207,7 +218,7 @@ W = 256
 H = 256
 
 # 创建VAE模型实例
-latent_dim = 100
+latent_dim = 10
 vae = VAE(input_dim, latent_dim)
 
 
