@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,7 +9,7 @@ import numpy as np
 import os
 import glob
 import matplotlib.pyplot as plt
-import math
+from datetime import datetime
 
 class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -136,7 +135,6 @@ class UNet(nn.Module):
         
         return sigma_u, sigma_v
 
-
 def custom_loss(sigma, v, v_t, device):
     sigma = sigma.squeeze(1)
     eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
@@ -148,7 +146,6 @@ def custom_loss(sigma, v, v_t, device):
     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
     
     return loss
-
 
 class MyDataset(Dataset):
     def __init__(self, data_path):
@@ -205,12 +202,14 @@ def remap(inputs, device):
 
     return inputs_new.to(device)
 
-def train(model, optimizer, data_loader, num_epochs, device):
+def train(model, optimizer, data_loader, num_epochs, save_name, device):
     
     model.to(device)
     losses = []
     losses_u = []
     losses_v = []
+    txt_name = '/home/panding/code/UR/ur-model/'+save_name+'.txt'
+    f = open(txt_name,'a')
     
     for epoch in range(num_epochs):
         epoch_loss = 0.0
@@ -264,20 +263,11 @@ def train(model, optimizer, data_loader, num_epochs, device):
         losses_u.append(avg_metric_u)
         losses_v.append(avg_metric_v)
         # 打印训练进度
-        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
-
-        plt.plot(losses, color='green', label='total loss')
-        plt.plot(losses_u, color='red', label='loss of sigma_u')
-        plt.plot(losses_v, color='blue', label='loss of sigma_v')
-        plt.xlabel('Epoch')
-        plt.ylabel('loss')
-        plt.yscale('log')
-        plt.title('Training Loss')
-        plt.savefig('loss-mse.png')    
+        f.write(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
+        f.write('\n')   
         if epoch % 5 == 0:
-            save_path = '/home/panding/code/UR/ur-model/model-mse-'+str(epoch)+'.model.pt'
+            save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
             torch.save(model.state_dict(), save_path)
-
     plt.plot(losses, color='green', label='total loss')
     plt.plot(losses_u, color='red', label='loss of sigma_u')
     plt.plot(losses_v, color='blue', label='loss of sigma_v')
@@ -285,24 +275,29 @@ def train(model, optimizer, data_loader, num_epochs, device):
     plt.ylabel('loss')
     plt.yscale('log')
     plt.title('Training Loss')
-    # plt.legend()
-    plt.savefig('loss-mse.png')
-    torch.save(model.state_dict(), 'model-mse.pt')
+    plt.savefig('/home/panding/code/UR/ur-model/'+save_name+'.png')    
+    save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
+    torch.save(model.state_dict(), save_path)
     
 if __name__ == '__main__':
     
     # 加载数据
-    data_path = '/home/panding/code/UR/piv-data/ur'
-    batch_size = 2
+    data_path = '/home/panding/code/UR/piv-data/unflownet-to-train-muenn'
+    batch_size = 4
+    learning_rate = 0.0005
 
     my_data_loader = load_data(data_path, batch_size)
 
     # 初始化模型、优化器和设备
     net = UNet(in_channels=4, out_channels=1)
-    Adam_optimizer = optim.Adam(net.parameters(), lr=0.0005)
+    Adam_optimizer = optim.Adam(net.parameters(), lr=learning_rate)
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 训练循环
-    my_num_epochs = 500
+    my_num_epochs = 400
+    time = str(datetime.now())
+    time = time.split(' ')[0]+'-'+time.split(' ')[1][:8]
+    save_name = time  + '-' + str(batch_size) + '-' + str(learning_rate) + '-' + str(my_num_epochs)
+    print(f"--------- model is training: {save_name} ---------")
     
-    train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)
+    train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, save_name=save_name, device=my_device)

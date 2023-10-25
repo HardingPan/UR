@@ -97,6 +97,15 @@ def avg():
         muenn_u.append(SSIM(truth_u, sigma_u_ur))
         muenn_v.append(SSIM(truth_v, sigma_v_ur))
         
+        # mm_u.append(PSNR(truth_u, uncertainty_u_mm))
+        # mm_v.append(PSNR(truth_v, uncertainty_v_mm))
+        
+        # mt_u.append(PSNR(truth_u, uncertainty_u_mt))
+        # mt_v.append(PSNR(truth_v, uncertainty_v_mt))
+        
+        # muenn_u.append(PSNR(truth_u, sigma_u_ur))
+        # muenn_v.append(PSNR(truth_v, sigma_v_ur))
+        
     print(f"\n ————————— result ————————— \n \
         mm_u: {np.mean(mm_u)}, mm_v: {np.mean(mm_v)}, \n \
         mt_u: {np.mean(mt_u)}, mt_v: {np.mean(mt_v)}, \n \
@@ -137,13 +146,15 @@ data_path_un = '/home/panding/code/UR/piv-data/ur-un'
 
 data_path_ur = '/home/panding/code/UR/piv-data/raft-test'
 
-datas_multimodel = glob.glob(os.path.join(data_path_multimodel, '*.npy'))
-datas_multitransform = glob.glob(os.path.join(data_path_multitransform, '*.npy'))
-datas_truth = glob.glob(os.path.join(data_path_truth, '*.npy'))
+cls = 'b'
+
+datas_multimodel = glob.glob(os.path.join(data_path_multimodel, cls+'*.npy'))
+datas_multitransform = glob.glob(os.path.join(data_path_multitransform, cls+'*.npy'))
+datas_truth = glob.glob(os.path.join(data_path_truth, cls+'*.npy'))
 # datas_ur = glob.glob(os.path.join(data_path_ur, 'S*.npy'))
-datas_ur_img_1 = glob.glob(os.path.join(data_path_ur, '*img1.tif'))
-datas_ur_img_2 = glob.glob(os.path.join(data_path_ur, '*img2.tif'))
-datas_un = glob.glob(os.path.join(data_path_un, '*.npy'))
+datas_ur_img_1 = glob.glob(os.path.join(data_path_ur, cls+'*img1.tif'))
+datas_ur_img_2 = glob.glob(os.path.join(data_path_ur, cls+'*img2.tif'))
+datas_un = glob.glob(os.path.join(data_path_un, cls+'*.npy'))
 
 datas_multimodel = sorted(datas_multimodel)
 datas_multitransform = sorted(datas_multitransform)

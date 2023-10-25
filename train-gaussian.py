@@ -10,7 +10,7 @@ import numpy as np
 import os
 import glob
 import matplotlib.pyplot as plt
-from torchvision.models import resnet18
+from datetime import datetime
 
 class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -136,73 +136,30 @@ class UNet(nn.Module):
         
         return sigma_u, sigma_v
 
-class ResNet(nn.Module):
-    def __init__(self):
-        super(ResNet, self).__init__()
-        self.base_model = resnet18(pretrained=True)
-        self.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=1, padding=1)
-        self.relu = nn.ReLU(inplace=True)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc1 = nn.Linear(512, 1)
-        self.fc2 = nn.Linear(512, 1)
-        
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.base_model.maxpool(x)
-        x = self.base_model.layer1(x)
-        x = self.base_model.layer2(x)
-        x = self.base_model.layer3(x)
-        x = self.base_model.layer4(x)
-        x = self.avgpool(x)
-        print(x.shape)
-        x = x.view(x.size(0), -1)
-        print(x.shape)
-        output1 = self.fc1(x)
-        output2 = self.fc2(x)
-        return output1, output2
-
-# def custom_loss(sigma, v, v_t, device):
-    
-#     v = v.unsqueeze(1)
-#     v_t = v_t.unsqueeze(1)
-    
-#     eps = torch.full((len(sigma), 1, 256, 256), 1e-10).to(device)
-#     sigma2 = torch.square(sigma) + eps
-#     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
-#     loss = torch.log(sigma2) + torch.square(v_t - v) / sigma2
-
-#     return loss.mean()
-
 def custom_loss(sigma, v, v_t, device):
-    sigma = sigma.squeeze(1)
-    # print(sigma.shape)
-    eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
-    # print(eps.shape)
-    # sigma2 = torch.square(sigma) + eps
-    sigma = 3 * torch.abs(sigma) + eps
-    loss_fn = nn.MSELoss()
-    sigma_t = torch.abs(v - v_t)
-    loss = loss_fn(sigma, sigma_t)
-    # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
     
-    return loss
+    v = v.unsqueeze(1)
+    v_t = v_t.unsqueeze(1)
+    
+    eps = torch.full((len(sigma), 1, 256, 256), 1e-10).to(device)
+    sigma2 = torch.square(sigma) + eps
+    # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, v.shape: {v.shape}, v_t.shape: {v_t.shape}")
+    loss = torch.log(sigma2) + torch.square(v_t - v) / sigma2
+    loss = torch.sigmoid(torch.negative(loss))
+    return loss.mean()
 
 # def custom_loss(sigma, v, v_t, device):
-
 #     sigma = sigma.squeeze(1)
 #     eps = torch.full((len(sigma), 256, 256), 1e-10).to(device)
+#     # sigma2 = torch.square(sigma) + eps
 #     sigma = 3 * torch.abs(sigma) + eps
+#     loss_fn = nn.MSELoss()
 #     sigma_t = torch.abs(v - v_t)
-#     # print(f"sigam2.shape: {sigma.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}")
-#     mse = (sigma - sigma_t) ** 2
-#     temp = torch.full((len(sigma), 256, 256), 100.0).to(device)
-#     PIXEL_MAX = 255.0
-#     mse = torch.where(mse==0, temp, mse)
-#     loss = 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
-#     # print(loss.shape)
-#     return loss.mean()
-
+#     loss = loss_fn(sigma, sigma_t)
+#     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
+    
+#     return loss
+    
 class MyDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = data_path
@@ -257,13 +214,15 @@ def remap(inputs, device):
     inputs_new = torch.from_numpy(inputs_new)
 
     return inputs_new.to(device)
- 
-def train(model, optimizer, data_loader, num_epochs, device):
+
+def train(model, optimizer, data_loader, num_epochs, save_name, device):
     
     model.to(device)
     losses = []
     losses_u = []
     losses_v = []
+    txt_name = '/home/panding/code/UR/ur-model/'+save_name+'.txt'
+    f = open(txt_name,'a')
     
     for epoch in range(num_epochs):
         epoch_loss = 0.0
@@ -317,18 +276,10 @@ def train(model, optimizer, data_loader, num_epochs, device):
         losses_u.append(avg_metric_u)
         losses_v.append(avg_metric_v)
         # 打印训练进度
-        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
-
-        plt.plot(losses, color='green', label='total loss')
-        plt.plot(losses_u, color='red', label='loss of sigma_u')
-        plt.plot(losses_v, color='blue', label='loss of sigma_v')
-        plt.xlabel('Epoch')
-        plt.ylabel('loss')
-        plt.yscale('log')
-        plt.title('Training Loss')
-        plt.savefig('loss.png')   
+        f.write(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
+        f.write('\n')   
         if epoch % 5 == 0:
-            save_path = '/home/panding/code/UR/ur-model/model-'+str(epoch)+'.model.pt'
+            save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
             torch.save(model.state_dict(), save_path)
     plt.plot(losses, color='green', label='total loss')
     plt.plot(losses_u, color='red', label='loss of sigma_u')
@@ -337,24 +288,29 @@ def train(model, optimizer, data_loader, num_epochs, device):
     plt.ylabel('loss')
     plt.yscale('log')
     plt.title('Training Loss')
-    plt.savefig('loss.png')   
-    torch.save(model.state_dict(), '/home/panding/code/UR/unet-model/model-new.pt')
+    plt.savefig('/home/panding/code/UR/ur-model/'+save_name+'.png')    
+    save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
+    torch.save(model.state_dict(), save_path)
     
 if __name__ == '__main__':
     
     # 加载数据
-    data_path = '/home/panding/code/UR/piv-data/ur'
-    batch_size = 2
+    data_path = '/home/panding/code/UR/piv-data/unflownet-to-train-muenn'
+    batch_size = 4
+    learning_rate = 0.0005
 
     my_data_loader = load_data(data_path, batch_size)
 
     # 初始化模型、优化器和设备
     net = UNet(in_channels=4, out_channels=1)
-    # net = ResNet()
-    Adam_optimizer = optim.Adam(net.parameters(), lr=0.0005)
+    Adam_optimizer = optim.Adam(net.parameters(), lr=learning_rate)
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 训练循环
-    my_num_epochs = 500
+    my_num_epochs = 400
+    time = str(datetime.now())
+    time = time.split(' ')[0]+'-'+time.split(' ')[1][:8]
+    save_name = time  + '-' + str(batch_size) + '-' + str(learning_rate) + '-' + str(my_num_epochs)
+    print(f"--------- model is training: {save_name} ---------")
     
-    train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, device=my_device)
+    train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, save_name=save_name, device=my_device)
