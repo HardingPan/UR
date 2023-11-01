@@ -12,12 +12,13 @@ from baseline import MultiMethod
 import torch
 from torchvision import transforms
 import torch.nn as nn
-from UR.muenn import Ur
+from muenn import MueNN
 from utils import InputPadder
 
 import argparse
 
-DEVICE = 'cuda'
+# DEVICE = 'cuda'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 transform_gray = transforms.Compose([
     transforms.Grayscale(num_output_channels=1), # 彩色图像转灰度图像num_output_channels默认1
@@ -60,60 +61,70 @@ def cat(imfiles_1, imfiles_2, imfiles_flo, imfiles_truth):
         # print(save_path+'/'+file_name)
         np.save(save_path+'/'+file_name, result)
 
-def avg():
-    
-    mm_u = []
-    mm_v = []
+def load_data(cls):
 
-    mt_u = []
-    mt_v = []
+    datas_multimodel = glob.glob(os.path.join(data_path_multimodel, cls+'*.npy'))
+    datas_multitransform = glob.glob(os.path.join(data_path_multitransform, cls+'*.npy'))
+    datas_truth = glob.glob(os.path.join(data_path_truth, cls+'*.npy'))
+    # datas_ur = glob.glob(os.path.join(data_path_ur, 'S*.npy'))
+    datas_ur_img_1 = glob.glob(os.path.join(data_path_ur, cls+'*img1.tif'))
+    datas_ur_img_2 = glob.glob(os.path.join(data_path_ur, cls+'*img2.tif'))
+    datas_un = glob.glob(os.path.join(data_path_un, cls+'*.npy'))
 
-    muenn_u = []
-    muenn_v = []
+    datas_multimodel = sorted(datas_multimodel)
+    datas_multitransform = sorted(datas_multitransform)
+    datas_truth = sorted(datas_truth)
+    datas_un = sorted(datas_un)
+
+    # datas_ur = sorted(datas_ur)
+    datas_ur_img_1 = sorted(datas_ur_img_1)
+    datas_ur_img_2 = sorted(datas_ur_img_2)
+    assert len(datas_multimodel) == len(datas_ur_img_1) == len(datas_ur_img_2)
     
+    return datas_multimodel, datas_multitransform, datas_truth, datas_un
+
+def compute_avg(mms, mts, uns, mm, mt, mue):
+    mm_u_ssim, mm_v_ssim, mt_u_ssim, mt_v_ssim, muenn_u_ssim, muenn_v_ssim = [], [], [], [], [], []
+    mm_u_psnr, mm_v_psnr, mt_u_psnr, mt_v_psnr, muenn_u_psnr, muenn_v_psnr = [], [], [], [], [], []
+    for i in range(0, len(uns)):
+        res_u = np.abs(np.load(uns[i])[-2] - np.load(uns[i])[2])
+        res_v = np.abs(np.load(uns[i])[-1] - np.load(uns[i])[3])
+        u_mm, v_mm = mm.uncertainty(np.load(mms[i]))
+        u_mt, v_mt = mt.uncertainty(np.load(mts[i]))
+        data_mue = np.load(uns[i])[:4]
+        data_mue = torch.from_numpy(data_mue).to(DEVICE)
+        u_mue, v_mue = mue.get_sigma(data_mue)
+        mm_u_ssim.append(SSIM(res_u, u_mm))
+        mm_v_ssim.append(SSIM(res_v, v_mm))
+        mt_u_ssim.append(SSIM(res_u, u_mt))
+        mt_v_ssim.append(SSIM(res_v, v_mt))
+        muenn_u_ssim.append(SSIM(res_u, u_mue))
+        muenn_v_ssim.append(SSIM(res_v, v_mue))
+        mm_u_psnr.append(PSNR(res_u, u_mm))
+        mm_v_psnr.append(PSNR(res_v, v_mm))
+        mt_u_psnr.append(PSNR(res_u, u_mt))
+        mt_v_psnr.append(PSNR(res_v, v_mt))
+        muenn_u_psnr.append(PSNR(res_u, u_mue))
+        muenn_v_psnr.append(PSNR(res_v, v_mue))
+        
+    print(f" \
+    {np.mean(mm_u_psnr)}, {np.mean(mm_v_psnr)}, {np.mean(mm_u_ssim)}, {np.mean(mm_v_ssim)}\n \
+    {np.mean(mt_u_psnr)}, {np.mean(mt_v_psnr)}, {np.mean(mt_u_ssim)}, {np.mean(mt_v_ssim)}\n \
+    {np.mean(muenn_u_psnr)}, {np.mean(muenn_v_psnr)}, {np.mean(muenn_u_ssim)}, {np.mean(muenn_v_ssim)}\n ")
+
+def get_avg():
+    
+    cls = ['backstep', 'cylinder', 'JHTDB_channel', 'JHTDB_isotropic1024_hd', 'JHTDB_mhd1024_hd', 'SQG']
     model_path = '/home/panding/code/UR/unet-model/best-1.pt'
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    for i in range(0, len(datas_un)):
-        truth_u = np.abs(np.load(datas_un[i])[4] - np.load(datas_multimodel[i])[0])
-        truth_v = np.abs(np.load(datas_un[i])[5] - np.load(datas_multimodel[i])[1])
-        baseline_1 = MultiMethod(datas_multimodel[i], 0)
-        uncertainty_u_mm, uncertainty_v_mm = baseline_1.uncertainty(show=0)
-
-        baseline_2 = MultiMethod(datas_multitransform[i], 1)
-        uncertainty_u_mt, uncertainty_v_mt = baseline_2.uncertainty(show=0)
-
-        data = np.load(datas_un[i])
-        data = data[:4]
-        uncertainty = Ur('unet', data, path=model_path, device=my_device)
-        sigma_u_ur_2show, sigma_v_ur_2show = uncertainty.get_sigma2show()
-        sigma_u_ur, sigma_v_ur = uncertainty.get_sigma()
-        # print(truth_u.shape, uncertainty_u_mm.shape)
-        mm_u.append(SSIM(truth_u, uncertainty_u_mm))
-        mm_v.append(SSIM(truth_v, uncertainty_v_mm))
+    mue = MueNN(model_path, my_device)
+    mm = MultiMethod(0)
+    mt = MultiMethod(1)
+    for i in range(len(cls)):
+        print(cls[i])
+        mms, mts, truths, uns = load_data(cls[i])
+        compute_avg(mms, mts, uns, mm, mt, mue)
         
-        mt_u.append(SSIM(truth_u, uncertainty_u_mt))
-        mt_v.append(SSIM(truth_v, uncertainty_v_mt))
-        
-        muenn_u.append(SSIM(truth_u, sigma_u_ur))
-        muenn_v.append(SSIM(truth_v, sigma_v_ur))
-        
-        # mm_u.append(PSNR(truth_u, uncertainty_u_mm))
-        # mm_v.append(PSNR(truth_v, uncertainty_v_mm))
-        
-        # mt_u.append(PSNR(truth_u, uncertainty_u_mt))
-        # mt_v.append(PSNR(truth_v, uncertainty_v_mt))
-        
-        # muenn_u.append(PSNR(truth_u, sigma_u_ur))
-        # muenn_v.append(PSNR(truth_v, sigma_v_ur))
-        
-    print(f"\n ————————— result ————————— \n \
-        mm_u: {np.mean(mm_u)}, mm_v: {np.mean(mm_v)}, \n \
-        mt_u: {np.mean(mt_u)}, mt_v: {np.mean(mt_v)}, \n \
-        muenn_u: {np.mean(muenn_u)}, muenn_v: {np.mean(muenn_v)}")
-        
-def MSE(arr_1, arr_2):
-    mse = np.mean( (arr_1 - arr_2) ** 2 )
-    return mse
 
 # PSNR越大，代表着图像质量越好
 def PSNR(img1, img2):
@@ -178,4 +189,4 @@ if __name__ == "__main__":
     if isSetData:
         cat(datas_ur_img_1, datas_ur_img_2, datas_multimodel, datas_truth)
     if isGetAvg:
-        avg()
+        get_avg()
