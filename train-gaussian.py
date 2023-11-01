@@ -222,7 +222,6 @@ def train(model, optimizer, data_loader, num_epochs, save_name, device):
     losses_u = []
     losses_v = []
     txt_name = '/home/panding/code/UR/ur-model/'+save_name+'.txt'
-    f = open(txt_name,'a')
     
     for epoch in range(num_epochs):
         epoch_loss = 0.0
@@ -276,8 +275,11 @@ def train(model, optimizer, data_loader, num_epochs, save_name, device):
         losses_u.append(avg_metric_u)
         losses_v.append(avg_metric_v)
         # 打印训练进度
+        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
+        f = open(txt_name,'a')
         f.write(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
         f.write('\n')   
+        f.close()
         if epoch % 5 == 0:
             save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
             torch.save(model.state_dict(), save_path)
@@ -296,8 +298,8 @@ if __name__ == '__main__':
     
     # 加载数据
     data_path = '/home/panding/code/UR/piv-data/unflownet-to-train-muenn'
-    batch_size = 4
-    learning_rate = 0.0005
+    batch_size = 2
+    learning_rate = 0.0002
 
     my_data_loader = load_data(data_path, batch_size)
 
@@ -310,7 +312,7 @@ if __name__ == '__main__':
     my_num_epochs = 400
     time = str(datetime.now())
     time = time.split(' ')[0]+'-'+time.split(' ')[1][:8]
-    save_name = time  + '-' + str(batch_size) + '-' + str(learning_rate) + '-' + str(my_num_epochs)
+    save_name = 'GAUSSIAN' + '-' + time  + '-' + str(batch_size) + '-' + str(learning_rate) + '-' + str(my_num_epochs)
     print(f"--------- model is training: {save_name} ---------")
     
     train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, save_name=save_name, device=my_device)

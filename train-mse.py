@@ -10,6 +10,7 @@ import os
 import glob
 import matplotlib.pyplot as plt
 from datetime import datetime
+import argparse
 
 class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -17,10 +18,12 @@ class double_conv(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
+            nn.LeakyReLU(negative_slope=0.01,inplace=True),
             nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
+            # nn.ReLU(inplace=True)
+            nn.LeakyReLU(negative_slope=0.01,inplace=True)
         )
 
     def forward(self, x):
@@ -33,7 +36,8 @@ class up_conv(nn.Module):
         self.up = nn.Sequential(
             nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
+            # nn.ReLU(inplace=True)
+            nn.LeakyReLU(negative_slope=0.01,inplace=True)
         )
 
     def forward(self, x):
@@ -146,7 +150,7 @@ def custom_loss(sigma, v, v_t, device):
     # print(f"sigam2.shape: {sigma2.shape}, eps.shape: {eps.shape}, sigma.shape: {sigma.shape}, v_t.shape: {v_t.shape}, sigma_t.shape: {sigma2_t.shape}")
     
     return loss
-
+    
 class MyDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = data_path
@@ -209,7 +213,6 @@ def train(model, optimizer, data_loader, num_epochs, save_name, device):
     losses_u = []
     losses_v = []
     txt_name = '/home/panding/code/UR/ur-model/'+save_name+'.txt'
-    f = open(txt_name,'a')
     
     for epoch in range(num_epochs):
         epoch_loss = 0.0
@@ -263,11 +266,13 @@ def train(model, optimizer, data_loader, num_epochs, save_name, device):
         losses_u.append(avg_metric_u)
         losses_v.append(avg_metric_v)
         # 打印训练进度
+        print(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
+        f = open(txt_name,'a')
         f.write(f"Epoch {epoch+1}/{num_epochs}: Loss={avg_loss:.8f}, Metric_u={avg_metric_u:.8f}, Metric_v={avg_metric_v:.8f}")
         f.write('\n')   
-        if epoch % 5 == 0:
-            save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
-            torch.save(model.state_dict(), save_path)
+        f.close()
+        save_path = '/home/panding/code/UR/ur-model/' + save_name + '.pth'
+        torch.save(model.state_dict(), save_path)
     plt.plot(losses, color='green', label='total loss')
     plt.plot(losses_u, color='red', label='loss of sigma_u')
     plt.plot(losses_v, color='blue', label='loss of sigma_v')
@@ -281,10 +286,16 @@ def train(model, optimizer, data_loader, num_epochs, save_name, device):
     
 if __name__ == '__main__':
     
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bs', type=int, default=2)
+    parser.add_argument('--lr', type=float, default=0.0002)
+    parser.add_argument('--num', type=int, default=400)
+    args = parser.parse_args()
+    
     # 加载数据
     data_path = '/home/panding/code/UR/piv-data/unflownet-to-train-muenn'
-    batch_size = 4
-    learning_rate = 0.0005
+    batch_size = args.bs
+    learning_rate = args.lr
 
     my_data_loader = load_data(data_path, batch_size)
 
@@ -294,10 +305,10 @@ if __name__ == '__main__':
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 训练循环
-    my_num_epochs = 400
+    my_num_epochs = args.num
     time = str(datetime.now())
     time = time.split(' ')[0]+'-'+time.split(' ')[1][:8]
-    save_name = time  + '-' + str(batch_size) + '-' + str(learning_rate) + '-' + str(my_num_epochs)
+    save_name = 'MSE' + '-' + time  + '-' + str(batch_size) + '-' + str(learning_rate) + '-' + str(my_num_epochs)
     print(f"--------- model is training: {save_name} ---------")
     
     train(model=net, optimizer=Adam_optimizer, data_loader=my_data_loader, num_epochs=my_num_epochs, save_name=save_name, device=my_device)

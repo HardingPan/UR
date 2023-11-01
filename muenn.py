@@ -213,51 +213,20 @@ def remap(inputs, device):
     
 #     return sigma.squeeze(0, 1)
 
-class Ur():
-    def __init__(self, model, data, path, device):
-        
-        self.data = remap(data, device)
-        self.data = self.data.unsqueeze(0)
-        # print(self.data.shape)
-        
-        self.model = model
-        
-        if model == 'unet':
-            
-            model = UNet(in_channels=4, out_channels=1)
-            # print('UNet has loaded')
-            model.load_state_dict(torch.load(path))
-            # print('load_state_dict has comple')
-            
-            model = model.to(device)
-            self.sigma_u, self.sigma_v = model(self.data)
-            self.sigma_u = self.sigma_u.reshape(256, 256).cpu().detach().numpy()
-            self.sigma_v = self.sigma_v.reshape(256, 256).cpu().detach().numpy()
-            # print('completed!')
-            
-        elif model == 'vae':
-            
-            model = VAE(input_dim, latent_dim)
-            # print('VAE has loaded')
-            model.load_state_dict(torch.load(path))
-            # print('load_state_dict has comple')
-            
-            model = model.to(device)
-            x_hat, mu, logvar = model(self.data)
-            # print(x_hat.shape)
-            self.sigma_u = x_hat[:, 0, :, :].reshape(256, 256)
-            self.sigma_v = x_hat[:, 1, :, :].reshape(256, 256)
-            self.sigma_u = self.sigma_u.cpu().detach().numpy()
-            self.sigma_v = self.sigma_v.cpu().detach().numpy()
-            # print('completed!')
-            
-        else:
-            print("No this model!")
-        
-    def get_sigma(self):
-        return self.sigma_u, self.sigma_v
-    def get_sigma2show(self):
-        return self.sigma_u.reshape(256, 256, 1), self.sigma_v.reshape(256, 256, 1)
+class MueNN():
+    def __init__(self, path, device):
+        self.model = UNet(in_channels=4, out_channels=1)
+        self.model.load_state_dict(torch.load(path))
+        self.model = self.model.to(device)
+    def get_sigma(self, data):
+        data = torch.unsqueeze(data, 0)
+        sigma_u, sigma_v = self.model(data)
+        sigma_u = sigma_u.reshape(256, 256).cpu().detach().numpy()
+        sigma_v = sigma_v.reshape(256, 256).cpu().detach().numpy()
+        return sigma_u, sigma_v
+    def get_sigma2show(self, data):
+        sigma_u, sigma_v = self.get_sigma(data)
+        return sigma_u.reshape(256, 256, 1), sigma_v.reshape(256, 256, 1)
 
 if __name__ == '__main__':
     
@@ -265,11 +234,11 @@ if __name__ == '__main__':
     data_path = '/home/panding/code/UR/piv-data/ur/backstep_Re800_00361.npy'
     data = np.load(data_path)
     data = data[:4]
-    # data_tensor = torch.from_numpy(data)
     
     model_path = '/home/panding/code/UR/UR/model.pt'
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    test = Ur('unet', data, model_path, my_device)
-    sigma = test.get_sigma()
+    data_tensor = torch.from_numpy(data).to(my_device)
+    print(data_tensor.shape)
+    test = MueNN(model_path, my_device)
+    sigma = test.get_sigma(data_tensor)
     

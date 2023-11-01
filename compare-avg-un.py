@@ -12,7 +12,7 @@ from baseline import MultiMethod
 import torch
 from torchvision import transforms
 import torch.nn as nn
-from ur import Ur
+from UR.muenn import Ur
 from utils import InputPadder
 
 import argparse
