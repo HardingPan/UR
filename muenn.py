@@ -223,6 +223,8 @@ class MueNN():
         sigma_u, sigma_v = self.model(data)
         sigma_u = sigma_u.reshape(256, 256).cpu().detach().numpy()
         sigma_v = sigma_v.reshape(256, 256).cpu().detach().numpy()
+        # sigma_u = 1/(1 + np.exp(-sigma_u))
+        # sigma_v = 1/(1 + np.exp(-sigma_v))
         return sigma_u, sigma_v
     def get_sigma2show(self, data):
         sigma_u, sigma_v = self.get_sigma(data)

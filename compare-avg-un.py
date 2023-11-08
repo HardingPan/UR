@@ -115,7 +115,7 @@ def compute_avg(mms, mts, uns, mm, mt, mue):
 def get_avg():
     
     cls = ['backstep', 'cylinder', 'JHTDB_channel', 'JHTDB_isotropic1024_hd', 'JHTDB_mhd1024_hd', 'SQG']
-    model_path = '/home/panding/code/UR/unet-model/best-1.pt'
+    model_path = '/home/panding/code/UR/ur-model/MSE-2023-11-01-14:14:02-16-0.0001-200.pth'
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     mue = MueNN(model_path, my_device)
     mm = MultiMethod(0)
