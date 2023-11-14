@@ -6,6 +6,7 @@ import cv2
 from PIL import Image
 import math
 from scipy.stats import spearmanr
+from tqdm.autonotebook import tqdm
 
 from baseline import MultiMethod
 
@@ -84,9 +85,12 @@ def load_data(cls):
     return datas_multimodel, datas_multitransform, datas_truth, datas_un
 
 def compute_avg(mms, mts, uns, mm, mt, mue):
-    mm_u_ssim, mm_v_ssim, mt_u_ssim, mt_v_ssim, muenn_u_ssim, muenn_v_ssim = [], [], [], [], [], []
-    mm_u_psnr, mm_v_psnr, mt_u_psnr, mt_v_psnr, muenn_u_psnr, muenn_v_psnr = [], [], [], [], [], []
-    for i in range(0, len(uns)):
+    # mm_u_ssim, mm_v_ssim, mt_u_ssim, mt_v_ssim, muenn_u_ssim, muenn_v_ssim = [], [], [], [], [], []
+    # mm_u_psnr, mm_v_psnr, mt_u_psnr, mt_v_psnr, muenn_u_psnr, muenn_v_psnr = [], [], [], [], [], []
+    mm_psnr, mt_psnr, muenn_psnr = [], [], []
+    mm_ssim, mt_ssim, muenn_ssim = [], [], []
+    mm_pdf, mt_pdf, muenn_pdf = [], [], []
+    for i in tqdm(range(0, len(uns))):
         res_u = np.abs(np.load(uns[i])[-2] - np.load(uns[i])[2])
         res_v = np.abs(np.load(uns[i])[-1] - np.load(uns[i])[3])
         u_mm, v_mm = mm.uncertainty(np.load(mms[i]))
@@ -94,28 +98,57 @@ def compute_avg(mms, mts, uns, mm, mt, mue):
         data_mue = np.load(uns[i])[:4]
         data_mue = torch.from_numpy(data_mue).to(DEVICE)
         u_mue, v_mue = mue.get_sigma(data_mue)
-        mm_u_ssim.append(SSIM(res_u, u_mm))
-        mm_v_ssim.append(SSIM(res_v, v_mm))
-        mt_u_ssim.append(SSIM(res_u, u_mt))
-        mt_v_ssim.append(SSIM(res_v, v_mt))
-        muenn_u_ssim.append(SSIM(res_u, u_mue))
-        muenn_v_ssim.append(SSIM(res_v, v_mue))
-        mm_u_psnr.append(PSNR(res_u, u_mm))
-        mm_v_psnr.append(PSNR(res_v, v_mm))
-        mt_u_psnr.append(PSNR(res_u, u_mt))
-        mt_v_psnr.append(PSNR(res_v, v_mt))
-        muenn_u_psnr.append(PSNR(res_u, u_mue))
-        muenn_v_psnr.append(PSNR(res_v, v_mue))
         
-    print(f" \
-    {np.mean(mm_u_psnr)}, {np.mean(mm_v_psnr)}, {np.mean(mm_u_ssim)}, {np.mean(mm_v_ssim)}\n \
-    {np.mean(mt_u_psnr)}, {np.mean(mt_v_psnr)}, {np.mean(mt_u_ssim)}, {np.mean(mt_v_ssim)}\n \
-    {np.mean(muenn_u_psnr)}, {np.mean(muenn_v_psnr)}, {np.mean(muenn_u_ssim)}, {np.mean(muenn_v_ssim)}\n ")
+        res_2d = np.stack((res_u, res_v), axis=-1).reshape((256, 256, 2))
+        mm_2d = np.stack((u_mm, v_mm), axis=-1).reshape((256, 256, 2))
+        mt_2d = np.stack((u_mt, v_mt), axis=-1).reshape((256, 256, 2))
+        mue_2d = np.stack((u_mue, v_mue), axis=-1).reshape((256, 256, 2))    
+        
+        mm_psnr.append(PSNR(mm_2d, res_2d))
+        mt_psnr.append(PSNR(mt_2d, res_2d))
+        muenn_psnr.append(PSNR(mue_2d, res_2d))
+        
+        mm_ssim.append(SSIM(res_2d, mm_2d))
+        mt_ssim.append(SSIM(res_2d, mt_2d))
+        muenn_ssim.append(SSIM(res_2d, mue_2d))
+        
+        pdf_mm_2d = np.sqrt(np.square(pdf(res_u, u_mm)) + np.square(pdf(res_v, v_mm)))
+        pdf_mt_2d = np.sqrt(np.square(pdf(res_u, u_mt)) + np.square(pdf(res_v, v_mt)))
+        pdf_mue_2d = np.sqrt(np.square(pdf(res_u, u_mue)) + np.square(pdf(res_v, v_mue)))
+        
+        mm_pdf.append(pdf_mm_2d)
+        mt_pdf.append(pdf_mt_2d)
+        muenn_pdf.append(pdf_mue_2d)
+        
+    print(np.mean(mm_psnr), np.mean(mt_psnr), np.mean(muenn_psnr))
+    print(np.mean(mm_ssim), np.mean(mt_ssim), np.mean(muenn_ssim))
+    print(np.mean(mm_pdf), np.mean(mt_pdf), np.mean(muenn_pdf))
+        
+        # mm_u_ssim.append(SSIM(res_u, u_mm))
+        # mm_v_ssim.append(SSIM(res_v, v_mm))
+        # mt_u_ssim.append(SSIM(res_u, u_mt))
+        # mt_v_ssim.append(SSIM(res_v, v_mt))
+        # muenn_u_ssim.append(SSIM(res_u, u_mue))
+        # muenn_v_ssim.append(SSIM(res_v, v_mue))
+        # mm_u_psnr.append(PSNR(res_u, u_mm))
+        # mm_v_psnr.append(PSNR(res_v, v_mm))
+        # mt_u_psnr.append(PSNR(res_u, u_mt))
+        # mt_v_psnr.append(PSNR(res_v, v_mt))
+        # muenn_u_psnr.append(PSNR(res_u, u_mue))
+        # muenn_v_psnr.append(PSNR(res_v, v_mue))
+        
+        
+        
+        
+    # print(f" \
+    # {np.mean(mm_u_psnr)}, {np.mean(mm_v_psnr)}, {np.mean(mm_u_ssim)}, {np.mean(mm_v_ssim)}\n \
+    # {np.mean(mt_u_psnr)}, {np.mean(mt_v_psnr)}, {np.mean(mt_u_ssim)}, {np.mean(mt_v_ssim)}\n \
+    # {np.mean(muenn_u_psnr)}, {np.mean(muenn_v_psnr)}, {np.mean(muenn_u_ssim)}, {np.mean(muenn_v_ssim)}\n ")
 
 def get_avg():
     
     cls = ['backstep', 'cylinder', 'JHTDB_channel', 'JHTDB_isotropic1024_hd', 'JHTDB_mhd1024_hd', 'SQG']
-    model_path = '/home/panding/code/UR/ur-model/MSE-2023-11-01-14:14:02-16-0.0001-200.pth'
+    model_path = '/home/panding/code/UR/unet-model/best-1.pt'
     my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     mue = MueNN(model_path, my_device)
     mm = MultiMethod(0)
@@ -126,28 +159,61 @@ def get_avg():
         compute_avg(mms, mts, uns, mm, mt, mue)
         
 
-# PSNR越大，代表着图像质量越好
-def PSNR(img1, img2):
-    mse = np.mean( (img1 - img2) ** 2 )
-    if mse == 0:
-        return 100
-    PIXEL_MAX = 255.0
-    return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+# # PSNR越大，代表着图像质量越好
+# def PSNR(img1, img2):
+#     mse = np.mean( (img1 - img2) ** 2 )
+#     if mse == 0:
+#         return 100
+#     PIXEL_MAX = 255.0
+#     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
-# SSIM取值范围为[0,1]，值越大表示输出图像和无失真图像的差距越小，即图像质量越好。
-def SSIM(y_true , y_pred):
-    u_true = np.mean(y_true)
-    u_pred = np.mean(y_pred)
-    var_true = np.var(y_true)
-    var_pred = np.var(y_pred)
-    std_true = np.sqrt(var_true)
-    std_pred = np.sqrt(var_pred)
+
+def psnr_define(val1, val2):
+    val1 = torch.from_numpy(val1).to(DEVICE)
+    val2 = torch.from_numpy(val2).to(DEVICE)
+    mse = torch.mean((val1 - val2) ** 2)  # 均方误差
+    if mse == 0:
+        return 100  # 信噪比无穷大时的特殊情况
+    max_val = torch.max(val1)  # 假设元素范围在 0 到 255 之间
+    return 20 * torch.log10(max_val / torch.sqrt(mse))  # 返回 PSNR
+
+def PSNR(map1, map2):
+    psnr_values = torch.zeros(map1.shape[0], map1.shape[1])  # 创建与输入图像相同大小的零张量来存储每个位置上的 PSNR 值
+    for i in range(map1.shape[0]):
+        for j in range(map1.shape[1]):
+            psnr_values[i, j] = torch.mean(torch.stack([psnr_define(map1[i, j], map2[i, j])]))
+
+    average_psnr = torch.mean(psnr_values)  # 计算平均的 PSNR 值
+    return average_psnr.item()  # 返回平均的 PSNR 值以及每个位置上的 PSNR 值
+
+def SSIM(y_true, y_pred):
     R = 255
-    c1 = np.square(0.01*R)
-    c2 = np.square(0.03*R)
-    ssim = (2 * u_true * u_pred + c1) * (2 * std_pred * std_true + c2)
-    denom = (u_true ** 2 + u_pred ** 2 + c1) * (var_pred + var_true + c2)
-    return ssim / denom
+    c1 = (0.01 * R) ** 2
+    c2 = (0.03 * R) ** 2
+    ssim_map = torch.zeros(y_true.shape[0], y_true.shape[1]).to(DEVICE)  # 创建与输入图像相同大小的零张量来存储每个位置上的 SSIM 值
+
+    y_true_torch = torch.from_numpy(y_true.transpose(2, 0, 1)).float().to(DEVICE)  # 将输入的 numpy 张量转换为 PyTorch 张量
+    y_pred_torch = torch.from_numpy(y_pred.transpose(2, 0, 1)).float().to(DEVICE)
+
+    for i in range(y_true.shape[0]):
+        for j in range(y_true.shape[1]):
+            u_true = y_true_torch[0, i, j]
+            u_pred = y_pred_torch[0, i, j]
+            var_true = torch.var(y_true_torch[:, i, j])
+            var_pred = torch.var(y_pred_torch[:, i, j])
+            std_true = torch.sqrt(var_true)
+            std_pred = torch.sqrt(var_pred)
+
+            numerator = (2 * u_true * u_pred + c1) * (2 * std_pred * std_true + c2)
+            denominator = (u_true ** 2 + u_pred ** 2 + c1) * (var_pred + var_true + c2)
+
+            ssim_map[i, j] = numerator / denominator
+
+    average_ssim = torch.mean(ssim_map)  # 计算平均的 SSIM 值
+    return average_ssim.item()  # 返回平均的 SSIM 值以及每个位置上的 SSIM 值
+
+def pdf(mu, sigma):
+    return (1/sigma*math.sqrt(2*math.pi))*np.exp(-np.square(mu)/(2*np.square(sigma)))
     
 
 data_path_multimodel = '/home/panding/code/UR/piv-data/unflownet-mm'
