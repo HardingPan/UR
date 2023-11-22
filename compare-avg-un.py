@@ -18,7 +18,7 @@ from utils import InputPadder
 
 import argparse
 
-# DEVICE = 'cuda'
+# DEVICE = 'cpu'
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 transform_gray = transforms.Compose([
@@ -123,6 +123,11 @@ def compute_avg(mms, mts, uns, mm, mt, mue):
     print(np.mean(mm_psnr), np.mean(mt_psnr), np.mean(muenn_psnr))
     print(np.mean(mm_ssim), np.mean(mt_ssim), np.mean(muenn_ssim))
     print(np.mean(mm_pdf), np.mean(mt_pdf), np.mean(muenn_pdf))
+    
+    f = open('/home/panding/code/UR/UR/data.txt','a')
+    f.write(np.mean(mm_ssim), np.mean(mt_ssim), np.mean(muenn_ssim))
+    f.write('\n')   
+    f.close()
         
         # mm_u_ssim.append(SSIM(res_u, u_mm))
         # mm_v_ssim.append(SSIM(res_v, v_mm))
@@ -171,20 +176,20 @@ def get_avg():
 def psnr_define(val1, val2):
     val1 = torch.from_numpy(val1).to(DEVICE)
     val2 = torch.from_numpy(val2).to(DEVICE)
-    mse = torch.mean((val1 - val2) ** 2)  # 均方误差
+    mse = torch.mean((val1 - val2) ** 2)
     if mse == 0:
         return 100  # 信噪比无穷大时的特殊情况
-    max_val = torch.max(val1)  # 假设元素范围在 0 到 255 之间
-    return 20 * torch.log10(max_val / torch.sqrt(mse))  # 返回 PSNR
+    max_val = torch.max(val1)
+    return 20 * torch.log10(max_val / torch.sqrt(mse))
 
 def PSNR(map1, map2):
-    psnr_values = torch.zeros(map1.shape[0], map1.shape[1])  # 创建与输入图像相同大小的零张量来存储每个位置上的 PSNR 值
+    psnr_values = torch.zeros(map1.shape[0], map1.shape[1])
     for i in range(map1.shape[0]):
         for j in range(map1.shape[1]):
             psnr_values[i, j] = torch.mean(torch.stack([psnr_define(map1[i, j], map2[i, j])]))
 
-    average_psnr = torch.mean(psnr_values)  # 计算平均的 PSNR 值
-    return average_psnr.item()  # 返回平均的 PSNR 值以及每个位置上的 PSNR 值
+    average_psnr = torch.mean(psnr_values)
+    return average_psnr.item()
 
 def SSIM(y_true, y_pred):
     R = 255
@@ -192,7 +197,7 @@ def SSIM(y_true, y_pred):
     c2 = (0.03 * R) ** 2
     ssim_map = torch.zeros(y_true.shape[0], y_true.shape[1]).to(DEVICE)  # 创建与输入图像相同大小的零张量来存储每个位置上的 SSIM 值
 
-    y_true_torch = torch.from_numpy(y_true.transpose(2, 0, 1)).float().to(DEVICE)  # 将输入的 numpy 张量转换为 PyTorch 张量
+    y_true_torch = torch.from_numpy(y_true.transpose(2, 0, 1)).float().to(DEVICE)
     y_pred_torch = torch.from_numpy(y_pred.transpose(2, 0, 1)).float().to(DEVICE)
 
     for i in range(y_true.shape[0]):
